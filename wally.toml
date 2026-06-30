@@ -1,0 +1,11 @@
+[package]
+name = "kr3ative/bold"
+version = "0.1.0"
+description = "A rich chat & messaging interface for Roblox - markdown parsing, mentions, emoji, embeds, and a themeable message UI driven by a single Start call."
+license = "MIT"
+authors = ["kr3ative"]
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+include = ["default.project.json", "wally.toml", "src", "README.md", "LICENSE"]
+
+[dependencies]
