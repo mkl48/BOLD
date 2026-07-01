@@ -135,6 +135,9 @@ export type MessageClass = {
 	filtered: boolean?,
 	-- emoji -> tally, kept authoritative on the server
 	reactions: { [string]: Reaction }?,
+	-- optional custom card background for this one message
+	background: Color3?,
+	background_transparency: number?,
 }
 
 -- ─── Theme ───────────────────────────────────────────────────────────────────
@@ -171,6 +174,10 @@ export type Theme = {
 	quote_text: Color3?,
 	reaction_bg: Color3?,
 	reaction_active: Color3?,
+	message_bg: Color3?,
+	message_bg_transparency: number?,
+	message_hover: Color3?,
+	message_hover_transparency: number?,
 
 	-- autocomplete popup
 	autocomplete_bg: Color3?,
@@ -275,6 +282,13 @@ export type InterfaceConfig = {
 	reactions: boolean?,
 	reply_enabled: boolean?,
 	quick_reactions: { string }?,
+	backdrop: boolean?,
+	message_background: boolean?,
+	collapsible: boolean?,
+	collapse_lines: number?,
+	open_animation: boolean?,
+	show_friend_badge: boolean?,
+	show_blocked: boolean?,
 }
 
 export type BoldConfig = {

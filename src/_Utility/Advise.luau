@@ -5,15 +5,18 @@
 -- Local case-insensitive blocklist backstop layered on top of Roblox's
 -- TextService filter (not a replacement). The blocklist is sourced from Proflis
 -- (fetched over HttpService on the server, relayed to clients) so no profane
--- string literals live in the scripts themselves. Detection runs over a
--- *collapsed, normalized* copy of the text -- spacing/punctuation dropped,
--- digit-leet mapped to letters -- while masking is applied back to the original
--- via an index map. That catches "f u c k", "f.u.c.k", "f0ck", "fvck", "f*ck",
--- AND "fck"-style vowel dropping without relying on TextService. Blocked words
--- match as patterns where vowels are optional (consonants stay literal and
--- adjacent), so "fuck" also matches "fck" without opening matches on unrelated
--- words. The list is loaded lazily on first use, so it works no matter when
--- Proflis.Start() runs relative to this module loading.
+-- string literals live in the scripts themselves.
+--
+-- Matching is done with a per-word Lua pattern built so that:
+--   * separators between letters are tolerated (catches "f u c k", "f.u.c.k"),
+--   * digit/symbol leet is folded to letters first (catches "f0ck"),
+--   * INTERIOR vowels are optional (catches vowel-dropping like "fck"), while
+--     the FIRST and LAST characters stay literal, and
+--   * the match must sit on WORD BOUNDARIES (%f frontiers).
+-- The word-boundary requirement is what keeps this from censoring everything --
+-- "class" never matches "ass", "bus" never matches "abuse" -- while still
+-- catching the standalone/obfuscated word. An allow-list handles the rare
+-- Scunthorpe case. The list loads lazily on first use.
 
 local _Utility  = script.Parent
 local _Packages = _Utility.Parent._Packages
@@ -23,12 +26,7 @@ local AdviseFilter = {}
 
 type Entry = { word: string, pattern: string }
 
-local SEP: { [string]: boolean } = {
-	[" "] = true, ["."] = true, ["-"] = true, ["_"] = true,
-	["*"] = true, [","] = true, ["'"] = true,
-}
-
--- digit/symbol leet mapped to letters
+-- digit/symbol leet folded to letters (applied in place, length-preserving)
 local LEET: { [string]: string } = {
 	["4"] = "a", ["@"] = "a", ["3"] = "e", ["1"] = "i", ["!"] = "i",
 	["0"] = "o", ["5"] = "s", ["$"] = "s", ["7"] = "t", ["8"] = "b", ["9"] = "g",
@@ -36,29 +34,41 @@ local LEET: { [string]: string } = {
 
 local VOWELS: { [string]: boolean } = { a = true, e = true, i = true, o = true, u = true }
 
-local SENTINEL = "\1" -- non-letter boundary a blocked word can never cross
+-- optional run of non-word characters allowed between letters of a blocked word
+local INNER_SEP = "[^%w]*"
 
--- Escapes a single char for use inside a Lua pattern.
-local function escapeLiteral(c: string): string
-	if c:match("%w") then
-		return c
+-- Lower-case + fold leet, preserving byte positions so matches map straight back.
+local function leetLower(text: string): string
+	local out = table.create(#text)
+	for i = 1, #text do
+		local ch = text:sub(i, i)
+		out[i] = LEET[ch] or ch:lower()
 	end
+	return table.concat(out)
+end
+
+local function escapeLiteral(c: string): string
+	if c:match("%w") then return c end
 	return "%" .. c
 end
 
--- Builds a find-pattern for a word where vowels are optional (catches
--- missing-vowel obfuscation like "fck" for "fuck") and consonants stay literal
--- and adjacent (keeps unrelated words like "flock" from matching).
+-- Build the boundary-anchored, separator-tolerant, interior-vowel-optional pattern.
 local function wordToPattern(word: string): string
-	local parts = {}
-	for i = 1, #word do
+	local n = #word
+	local parts: { string } = { "%f[%w]" } -- must start at a word boundary
+	for i = 1, n do
 		local c = word:sub(i, i)
-		if VOWELS[c] then
+		local interior = i > 1 and i < n
+		if interior and VOWELS[c] then
 			table.insert(parts, "[aeiou]?")
 		else
 			table.insert(parts, escapeLiteral(c))
 		end
+		if i < n then
+			table.insert(parts, INNER_SEP)
+		end
 	end
+	table.insert(parts, "%f[%W]") -- ...and end at a word boundary
 	return table.concat(parts)
 end
 
@@ -70,10 +80,8 @@ end
 local _blocked: { Entry } = {}
 local _allowed: { [string]: boolean } = {}
 
--- Lazily build the blocklist from Proflis the first time we filter anything.
--- Deferred so it doesn't matter whether Proflis.Start() (server fetch) has run
--- yet when this module is required. Fail-open: an empty list means we simply
--- lean entirely on Roblox's TextService.
+-- Lazily build the blocklist from Proflis the first time we filter anything, so
+-- it doesn't matter whether Proflis.Start() (server fetch) has run yet. Fail-open.
 local _loaded = false
 local function ensureLoaded()
 	if _loaded then return end
@@ -81,89 +89,45 @@ local function ensureLoaded()
 	local ok, list = pcall(Proflis.Get)
 	if not ok or type(list) ~= "table" then return end
 	for key in list do
-		if type(key) == "string" and key ~= "" then
+		-- ignore very short words (too collision-prone) and non-strings
+		if type(key) == "string" and #key >= 3 then
 			table.insert(_blocked, makeEntry(key))
 		end
 	end
 end
 
--- Build a collapsed normalized string plus a map from normalized position ->
--- original byte index, so a match can be projected back onto the source text.
-local function normalize(text: string): (string, { number })
-	local chars: { string } = {}
-	local map: { number } = {}
-	for i = 1, #text do
-		local ch = text:sub(i, i)
-		local low = ch:lower()
-		if low:match("%a") then
-			table.insert(chars, low)
-			table.insert(map, i)
-		elseif LEET[ch] then
-			table.insert(chars, LEET[ch])
-			table.insert(map, i)
-		elseif SEP[ch] then
-			-- dropped
-		else
-			table.insert(chars, SENTINEL)
-			table.insert(map, i)
-		end
-	end
-	return table.concat(chars), map
-end
-
--- Expands a byte span in the ORIGINAL text out to the full contiguous word/number
--- run it sits inside, so the allow list can be checked against the whole enclosing
--- word rather than just the matched substring.
-local function expandToEnclosingWord(text: string, startByte: number, endByte: number): (number, number)
+-- Expand a byte span out to the whole word/number run it sits in, for allow-list checks.
+local function expandToEnclosingWord(text: string, s: number, e: number): (number, number)
 	local len = #text
-	local s, e = startByte, endByte
-
 	local function isWordChar(c: string): boolean
 		return c ~= "" and (c:match("%w") ~= nil or c == "'")
 	end
-
-	while s > 1 and isWordChar(text:sub(s - 1, s - 1)) do
-		s -= 1
-	end
-	while e < len and isWordChar(text:sub(e + 1, e + 1)) do
-		e += 1
-	end
-
+	while s > 1 and isWordChar(text:sub(s - 1, s - 1)) do s -= 1 end
+	while e < len and isWordChar(text:sub(e + 1, e + 1)) do e += 1 end
 	return s, e
 end
 
--- Original [start, stop] spans to mask, plus the matched original substring.
--- Allow-listed enclosing words are skipped.
+local function isAllowedAt(text: string, s: number, e: number): boolean
+	if next(_allowed) == nil then return false end
+	local ws, we = expandToEnclosingWord(text, s, e)
+	return _allowed[text:sub(ws, we):lower()] == true
+end
+
 local function findSpans(text: string): { { start: number, stop: number, match: string } }
 	ensureLoaded()
-	local norm, map = normalize(text)
-	local spans: { { start: number, stop: number, match: string } } = {}
-
+	local hay = leetLower(text)
+	local spans = {}
 	for _, entry in _blocked do
 		local from = 1
 		while true do
-			local s, e = norm:find(entry.pattern, from)
+			local s, e = hay:find(entry.pattern, from)
 			if not s then break end
-
-			local byteStart, byteEnd = map[s], map[e]
-
-			local skip = false
-			if next(_allowed) ~= nil then
-				local ws, we = expandToEnclosingWord(text, byteStart, byteEnd)
-				local enclosing = text:sub(ws, we):lower()
-				if _allowed[enclosing] then
-					skip = true
-				end
+			if not isAllowedAt(text, s, e) then
+				table.insert(spans, { start = s, stop = e, match = text:sub(s, e) })
 			end
-
-			if not skip then
-				table.insert(spans, { start = byteStart, stop = byteEnd, match = text:sub(byteStart, byteEnd) })
-			end
-
-			from = (e >= s) and (e + 1) or (s + 1) -- guard against zero-length matches
+			from = (e >= s) and (e + 1) or (s + 1)
 		end
 	end
-
 	return spans
 end
 
@@ -187,7 +151,18 @@ end
 
 function AdviseFilter.ContainsBlockedWord(text: string): boolean
 	if text == "" then return false end
-	return #findSpans(text) > 0
+	ensureLoaded()
+	local hay = leetLower(text)
+	local hasAllow = next(_allowed) ~= nil
+	for _, entry in _blocked do
+		local s, e = hay:find(entry.pattern)
+		if s then
+			if not hasAllow or not isAllowedAt(text, s, e) then
+				return true
+			end
+		end
+	end
+	return false
 end
 
 -- Extend the blocklist at runtime (surfaced as Bold.AddBlockedWords).
@@ -201,7 +176,6 @@ function AdviseFilter.Add(words: { string } | string)
 	end
 end
 
--- Remove a word from the blocklist at runtime.
 function AdviseFilter.Remove(word: string)
 	local lower = word:lower()
 	for i, entry in _blocked do
@@ -234,7 +208,6 @@ end
 
 -- ─── Match reporting (logging / scoring / warning reasons) ───────────────────
 
--- Returns the matched original substrings, e.g. { "f*ck", "fck" }.
 function AdviseFilter.Detect(text: string): { string }
 	local spans = findSpans(text)
 	local matches = table.create(#spans)
@@ -244,7 +217,6 @@ function AdviseFilter.Detect(text: string): { string }
 	return matches
 end
 
--- Number of hits -- convenient for scoring/thresholds in a warning system.
 function AdviseFilter.Count(text: string): number
 	return #findSpans(text)
 end

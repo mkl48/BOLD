@@ -51,6 +51,12 @@ local DARK: Types.Theme = {
 	reaction_bg              = Color3.fromRGB(40,  40, 46),
 	reaction_active          = Color3.fromRGB(108, 62, 244),
 
+	-- per-message card background (used when interface.message_background is on)
+	message_bg               = Color3.fromRGB(255, 255, 255),
+	message_bg_transparency  = 0.94,
+	message_hover            = Color3.fromRGB(255, 255, 255),
+	message_hover_transparency = 0.97,
+
 	autocomplete_bg          = Color3.fromRGB(43, 45, 49),
 	autocomplete_hover       = Color3.fromRGB(64, 66, 73),
 	autocomplete_border      = Color3.fromRGB(30, 31, 34),
@@ -144,6 +150,17 @@ Config.Interface = {
 	reactions        = true,
 	reply_enabled    = true,
 	quick_reactions  = { "👍", "❤️", "😂", "🔥", "🎉" },
+
+	-- visuals
+	backdrop            = true,  -- the panel behind the whole message list
+	message_background  = false, -- a card behind each message (Discord-ish)
+	collapsible         = true,  -- long messages get a show more/less toggle
+	collapse_lines      = 6,     -- collapse threshold, in lines
+	open_animation      = true,  -- animate the window opening/closing
+
+	-- social indicators
+	show_friend_badge   = false, -- a dot next to friends' names
+	show_blocked        = false, -- mark/handle Roblox-blocked users
 }
 
 Config.Parsing = {

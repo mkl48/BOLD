@@ -54,7 +54,7 @@ local function buildAutocompleteGui()
 
 	_autocompleteFrame = Instance.new("Frame")
 	_autocompleteFrame.Name = "AutocompletePopup"
-	_autocompleteFrame.Size = UDim2.new(1, 0, 0, 250)
+	_autocompleteFrame.Size = UDim2.new(1, 0, 0, 0)
 	_autocompleteFrame.AnchorPoint = Vector2.new(0, 1)
 	_autocompleteFrame.Position = UDim2.new(0, 0, 0, -8)
 	_autocompleteFrame.BackgroundColor3 = tk("autocomplete_bg")
@@ -72,8 +72,18 @@ local function buildAutocompleteGui()
 	_autocompleteList.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	_autocompleteList.ZIndex = 51
 	_autocompleteList.Parent = _autocompleteFrame
-	Skin.list(_autocompleteList, Enum.FillDirection.Vertical, 0)
+	local layout = Skin.list(_autocompleteList, Enum.FillDirection.Vertical, 0)
 	Skin.pad(_autocompleteList, 8, 8, 8, 8)
+
+	-- size the popup to its content, clamped to the room above the input so it
+	-- never overflows the screen edge
+	layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		if not _autocompleteFrame then return end
+		local content = layout.AbsoluteContentSize.Y
+		local room = (_inputBar and _inputBar.AbsolutePosition.Y) or 300
+		local maxH = math.clamp(room - 12, 60, 300)
+		_autocompleteFrame.Size = UDim2.new(1, 0, 0, math.clamp(content + 16, 40, maxH))
+	end)
 end
 
 local function closeAutocomplete()

@@ -348,10 +348,11 @@ local function buildEmbed(embed: any, lo: number): Frame?
 		btn.TextSize = d.text_size - 2
 		btn.TextColor3 = Color3.new(1, 1, 1)
 		btn.LayoutOrder = iLo
+		btn.ZIndex = 3
 		btn.Parent = inner
 		Skin.corner(btn, 6)
 		btn.MouseButton1Click:Connect(function()
-			Events.EmbedActionFired:Fire(embed.action_id, nil)
+			Events.EmbedActionFired:Fire(embed.action_id, message)
 		end)
 	end
 
@@ -369,6 +370,7 @@ local function buildReplyBar(message: any, lo: number): Frame
 	outer.Text = ""
 	outer.AutoButtonColor = false
 	outer.LayoutOrder = lo
+	outer.ZIndex = 3
 	Skin.pad(outer, 8, 0, 0, 2)
 
 	local bar = Instance.new("Frame")
@@ -428,6 +430,7 @@ local function buildReactions(message: any, lo: number): Frame?
 		pill.TextSize = density().text_size - 3
 		pill.TextColor3 = tk("text")
 		pill.Text = ("%s %d"):format(emoji, data.count)
+		pill.ZIndex = 3
 		pill.Parent = row
 		Skin.corner(pill, 10)
 		Skin.pad(pill, 6, 6, 0, 0)
@@ -591,29 +594,60 @@ end
 
 -- ─── row builder ─────────────────────────────────────────────────────────────
 
-local function buildRow(message: any, revealed: boolean, groupedOverride: boolean?): TextButton
+local function buildRow(message: any, revealed: boolean, groupedOverride: boolean?): GuiObject
 	local kind = message.kind or "chat"
 	if Render.Renderers[kind] then
 		return Render.Renderers[kind](message, Config.Interface.theme)
 	end
 
+	local cfg = Config.Interface
 	local style = KIND_STYLE[kind] or KIND_STYLE.chat
 	local override = KIND_OVERRIDE[kind]
 	local d = density()
 	local grouped = if groupedOverride ~= nil then groupedOverride else shouldGroup(message)
 	_lastGrouped = grouped
 
-	local row = Instance.new("TextButton")
+	-- rows are Frames (Active = false) so plain messages don't sink clicks meant for
+	-- game UI behind the panel; interactive messages get a hit overlay lower down.
+	local row = Instance.new("Frame")
 	row.Name = "Row"
 	row.AutomaticSize = Enum.AutomaticSize.Y
 	row.Size = UDim2.new(1, 0, 0, 0)
-	row.BackgroundColor3 = override and tk(override.bg_key or "background") or Color3.new(0, 0, 0)
-	row.BackgroundTransparency = override and override.bg_key and 0.75 or 1
-	row.Text = ""
-	row.AutoButtonColor = false
+	row.Active = false
+	row.BorderSizePixel = 0
+
+	local bgKey = override and override.bg_key
+	local cardBg = message.background -- optional per-message Color3
+	local carded = false
+	if bgKey then
+		row.BackgroundColor3 = tk(bgKey)
+		row.BackgroundTransparency = 0.75
+	elseif cardBg then
+		row.BackgroundColor3 = cardBg
+		row.BackgroundTransparency = message.background_transparency or 0
+	elseif cfg.message_background then
+		row.BackgroundColor3 = tk("message_bg")
+		row.BackgroundTransparency = tk("message_bg_transparency")
+		carded = true
+	else
+		row.BackgroundColor3 = Color3.new(0, 0, 0)
+		row.BackgroundTransparency = 1
+	end
+
 	Skin.corner(row, 4)
-	Skin.pad(row, 4, 4, d.row_pad, d.row_pad)
+	Skin.pad(row, 6, 6, d.row_pad, d.row_pad)
 	Skin.list(row, nil, 2)
+
+	if carded then
+		row.MouseEnter:Connect(function()
+			row.BackgroundColor3 = tk("message_hover")
+			row.BackgroundTransparency = tk("message_hover_transparency")
+		end)
+		row.MouseLeave:Connect(function()
+			row.BackgroundColor3 = tk("message_bg")
+			row.BackgroundTransparency = tk("message_bg_transparency")
+		end)
+	end
 
 	local lo = 0
 
@@ -692,24 +726,36 @@ local function buildRow(message: any, revealed: boolean, groupedOverride: boolea
 		inlineLabel(table.concat(hParts))
 	end
 
-	-- whole-row click: reveal spoilers + surface mention/link/card events
-	row.MouseButton1Click:Connect(function()
-		Events.CardClicked:Fire(message, row)
-		for _, m in ctx.mentions do
-			Events.MentionClicked:Fire(m.mention_id or 0, m.mention_name or "", message)
-		end
-		for _, url in ctx.links do
-			Events.LinkClicked:Fire(url, message)
-		end
-		if ctx.hasSpoiler then
-			local entry = _registry[message.metadata.id]
-			if entry then
-				entry.revealed = not entry.revealed
-				Render.RebuildRow(message.metadata.id)
-				Events.SpoilerRevealed:Fire(message)
+	-- interactive overlay ONLY when there's something to click (spoilers/mentions/
+	-- links); otherwise the row stays a click-through Frame. Interactive children
+	-- below (reactions, reply bar, embed buttons, toolbar) sit above it via ZIndex.
+	if ctx.hasSpoiler or #ctx.mentions > 0 or #ctx.links > 0 then
+		local hit = Instance.new("TextButton")
+		hit.Name = "Hit"
+		hit.Size = UDim2.new(1, 0, 1, 0)
+		hit.BackgroundTransparency = 1
+		hit.Text = ""
+		hit.AutoButtonColor = false
+		hit.ZIndex = 2
+		hit.Parent = row
+		hit.MouseButton1Click:Connect(function()
+			Events.CardClicked:Fire(message, row)
+			for _, m in ctx.mentions do
+				Events.MentionClicked:Fire(m.mention_id or 0, m.mention_name or "", message)
 			end
-		end
-	end)
+			for _, url in ctx.links do
+				Events.LinkClicked:Fire(url, message)
+			end
+			if ctx.hasSpoiler then
+				local entry = _registry[message.metadata.id]
+				if entry then
+					entry.revealed = not entry.revealed
+					Render.RebuildRow(message.metadata.id)
+					Events.SpoilerRevealed:Fire(message)
+				end
+			end
+		end)
+	end
 
 	if message.tags and #message.tags > 0 then
 		buildTags(message, lo).Parent = row; lo += 1

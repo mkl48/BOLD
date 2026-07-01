@@ -56,10 +56,22 @@ function InputFilter.Attach(
 		setVisible(flagged)
 	end
 
+	-- Debounce the check: the blocklist can be a few thousand patterns, so run it
+	-- a beat after typing settles rather than on every keystroke.
+	local DEBOUNCE = 0.25
+	local pending = 0
+	local function schedule()
+		pending += 1
+		local token = pending
+		task.delay(DEBOUNCE, function()
+			if token == pending then update() end
+		end)
+	end
+
 	-- Reset state immediately in case textBox already has text
 	update()
 
-	local connection = textBox:GetPropertyChangedSignal("Text"):Connect(update)
+	local connection = textBox:GetPropertyChangedSignal("Text"):Connect(schedule)
 
 	-- Clear the warning once the message is actually sent
 	textBox.FocusLost:Connect(function(enterPressed)

@@ -768,6 +768,9 @@ export type MessageClass = {
 	filtered: boolean?,
 	-- emoji -> tally, kept authoritative on the server
 	reactions: { [string]: Reaction }?,
+	-- optional custom card background for this one message
+	background: Color3?,
+	background_transparency: number?,
 }
 
 -- ─── Theme ───────────────────────────────────────────────────────────────────
@@ -804,6 +807,10 @@ export type Theme = {
 	quote_text: Color3?,
 	reaction_bg: Color3?,
 	reaction_active: Color3?,
+	message_bg: Color3?,
+	message_bg_transparency: number?,
+	message_hover: Color3?,
+	message_hover_transparency: number?,
 
 	-- autocomplete popup
 	autocomplete_bg: Color3?,
@@ -908,6 +915,13 @@ export type InterfaceConfig = {
 	reactions: boolean?,
 	reply_enabled: boolean?,
 	quick_reactions: { string }?,
+	backdrop: boolean?,
+	message_background: boolean?,
+	collapsible: boolean?,
+	collapse_lines: number?,
+	open_animation: boolean?,
+	show_friend_badge: boolean?,
+	show_blocked: boolean?,
 }
 
 export type BoldConfig = {
@@ -1431,7 +1445,7 @@ local function buildAutocompleteGui()
 
 	_autocompleteFrame = Instance.new("Frame")
 	_autocompleteFrame.Name = "AutocompletePopup"
-	_autocompleteFrame.Size = UDim2.new(1, 0, 0, 250)
+	_autocompleteFrame.Size = UDim2.new(1, 0, 0, 0)
 	_autocompleteFrame.AnchorPoint = Vector2.new(0, 1)
 	_autocompleteFrame.Position = UDim2.new(0, 0, 0, -8)
 	_autocompleteFrame.BackgroundColor3 = tk("autocomplete_bg")
@@ -1449,8 +1463,18 @@ local function buildAutocompleteGui()
 	_autocompleteList.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	_autocompleteList.ZIndex = 51
 	_autocompleteList.Parent = _autocompleteFrame
-	Skin.list(_autocompleteList, Enum.FillDirection.Vertical, 0)
+	local layout = Skin.list(_autocompleteList, Enum.FillDirection.Vertical, 0)
 	Skin.pad(_autocompleteList, 8, 8, 8, 8)
+
+	-- size the popup to its content, clamped to the room above the input so it
+	-- never overflows the screen edge
+	layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		if not _autocompleteFrame then return end
+		local content = layout.AbsoluteContentSize.Y
+		local room = (_inputBar and _inputBar.AbsolutePosition.Y) or 300
+		local maxH = math.clamp(room - 12, 60, 300)
+		_autocompleteFrame.Size = UDim2.new(1, 0, 0, math.clamp(content + 16, 40, maxH))
+	end)
 end
 
 local function closeAutocomplete()
@@ -1962,6 +1986,7 @@ local _Utility = _Main.Parent._Utility
 
 local Config = require(_Utility.Config)
 local Skin   = require(_Utility.Skin)
+local Motion = require(_Utility.Motion)
 local Events = require(_Utility.Events)
 local Types  = require(_Main.Parent.Types)
 local Render  = require(_Main.Render)
@@ -1981,6 +2006,7 @@ local _gui: ScreenGui? = nil
 local _window: Frame? = nil
 local _container: ScrollingFrame? = nil
 local _header: Frame? = nil
+local _winScale: UIScale? = nil
 
 -- ─── build ───────────────────────────────────────────────────────────────────
 
@@ -2030,6 +2056,9 @@ local function buildGui()
 	_window.Parent = _gui
 	Skin.list(_window, nil, 2)
 
+	_winScale = Instance.new("UIScale")
+	_winScale.Parent = _window
+
 	if cfg.show_header and cfg.header_height > 0 then
 		_header = Instance.new("Frame")
 		_header.Name = "Header"
@@ -2055,6 +2084,29 @@ local function buildGui()
 		if cfg.draggable then enableDrag(_header, _window) end
 	end
 
+	-- draggable even when the header is hidden: a slim grip strip at the top
+	if cfg.draggable and not _header then
+		local handle = Instance.new("Frame")
+		handle.Name = "DragHandle"
+		handle.Size = UDim2.new(1, 0, 0, 14)
+		handle.BackgroundColor3 = tk("header")
+		handle.BackgroundTransparency = 0.5
+		handle.BorderSizePixel = 0
+		handle.LayoutOrder = 0
+		handle.Parent = _window
+		Skin.corner(handle, 6)
+		local grip = Instance.new("Frame")
+		grip.AnchorPoint = Vector2.new(0.5, 0.5)
+		grip.Position = UDim2.fromScale(0.5, 0.5)
+		grip.Size = UDim2.fromOffset(28, 3)
+		grip.BackgroundColor3 = tk("subtext")
+		grip.BackgroundTransparency = 0.4
+		grip.BorderSizePixel = 0
+		grip.Parent = handle
+		Skin.corner(grip, 2)
+		enableDrag(handle, _window)
+	end
+
 	local listWrapper = Instance.new("Frame")
 	listWrapper.Name = "ListWrapper"
 	listWrapper.BackgroundTransparency = 1
@@ -2066,8 +2118,9 @@ local function buildGui()
 	_container.Name = "Messages"
 	_container.Size = UDim2.new(1, 0, 1, 0)
 	_container.BackgroundColor3 = tk("background")
-	_container.BackgroundTransparency = tk("background_transparency")
+	_container.BackgroundTransparency = cfg.backdrop and tk("background_transparency") or 1
 	_container.BorderSizePixel = 0
+	_container.Active = false -- don't sink clicks meant for game UI behind the panel
 	_container.ScrollBarThickness = cfg.show_scrollbar and 4 or 0
 	_container.ScrollBarImageColor3 = tk("subtext")
 	_container.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -2080,12 +2133,54 @@ local function buildGui()
 	Skin.pad(_container, 8, 8, 6, 6)
 
 	local function syncWrapperHeight()
-		local contentHeight = layout.AbsoluteContentSize.Y + 12
-		local clamped = math.clamp(contentHeight, cfg.min_list_height or 0, cfg.max_list_height or 400)
-		listWrapper.Size = UDim2.new(1, 0, 0, clamped)
+		local content = layout.AbsoluteContentSize.Y
+		-- fully collapse when empty so the panel doesn't sit as a weird tiny box
+		local h = content <= 0 and 0
+			or math.clamp(content + 12, cfg.min_list_height or 0, cfg.max_list_height or 400)
+		listWrapper.Size = UDim2.new(1, 0, 0, h)
+		_container.Visible = content > 0
 	end
 	layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(syncWrapperHeight)
 	syncWrapperHeight()
+
+	-- resize grip (bottom-right): drag to change width + how tall the list can grow
+	if cfg.resizable then
+		local grip = Instance.new("TextButton")
+		grip.Name = "ResizeGrip"
+		grip.AnchorPoint = Vector2.new(1, 1)
+		grip.Position = UDim2.new(1, -2, 1, -2)
+		grip.Size = UDim2.fromOffset(16, 16)
+		grip.BackgroundTransparency = 1
+		grip.Text = "⤡"
+		grip.TextColor3 = tk("subtext")
+		grip.TextSize = 16
+		grip.ZIndex = 10
+		grip.Parent = listWrapper
+
+		local resizing, startPos, startWidth, startMax = false, nil, 0, 0
+		grip.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				resizing = true
+				startPos = input.Position
+				startWidth = (_window :: Frame).Size.X.Offset
+				startMax = cfg.max_list_height or 400
+			end
+		end)
+		UserInputService.InputChanged:Connect(function(input)
+			if not resizing then return end
+			if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+				local d = input.Position - startPos
+				;(_window :: Frame).Size = UDim2.new(0, math.max(220, startWidth + d.X), 0, 0)
+				cfg.max_list_height = math.max(80, startMax + d.Y)
+				syncWrapperHeight()
+			end
+		end)
+		UserInputService.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				resizing = false
+			end
+		end)
+	end
 
 	_container:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
 		Events.UIScrolled:Fire(_container.CanvasPosition.Y)
@@ -2146,9 +2241,26 @@ end
 
 function Interface.Toggle(visible: boolean?)
 	if not _gui then return end
-	local nextVal = if visible ~= nil then visible else not _gui.Enabled
-	_gui.Enabled = nextVal
-	Events.UIToggled:Fire(nextVal)
+	local target = if visible ~= nil then visible else not _gui.Enabled
+
+	if not Config.Interface.open_animation or not _winScale then
+		_gui.Enabled = target
+		Events.UIToggled:Fire(target)
+		return
+	end
+
+	if target then
+		_gui.Enabled = true
+		_winScale.Scale = 0.85
+		Motion.tween(_winScale, 0.22, { Scale = 1 }, Enum.EasingStyle.Back)
+	else
+		Motion.tween(_winScale, 0.16, { Scale = 0.85 }, Enum.EasingStyle.Quad)
+		task.delay(0.16, function()
+			if _gui and _winScale and _winScale.Scale < 0.9 then _gui.Enabled = false end
+		end)
+	end
+
+	Events.UIToggled:Fire(target)
 end
 
 function Interface.FocusInput()
@@ -2587,10 +2699,11 @@ local function buildEmbed(embed: any, lo: number): Frame?
 		btn.TextSize = d.text_size - 2
 		btn.TextColor3 = Color3.new(1, 1, 1)
 		btn.LayoutOrder = iLo
+		btn.ZIndex = 3
 		btn.Parent = inner
 		Skin.corner(btn, 6)
 		btn.MouseButton1Click:Connect(function()
-			Events.EmbedActionFired:Fire(embed.action_id, nil)
+			Events.EmbedActionFired:Fire(embed.action_id, message)
 		end)
 	end
 
@@ -2608,6 +2721,7 @@ local function buildReplyBar(message: any, lo: number): Frame
 	outer.Text = ""
 	outer.AutoButtonColor = false
 	outer.LayoutOrder = lo
+	outer.ZIndex = 3
 	Skin.pad(outer, 8, 0, 0, 2)
 
 	local bar = Instance.new("Frame")
@@ -2667,6 +2781,7 @@ local function buildReactions(message: any, lo: number): Frame?
 		pill.TextSize = density().text_size - 3
 		pill.TextColor3 = tk("text")
 		pill.Text = ("%s %d"):format(emoji, data.count)
+		pill.ZIndex = 3
 		pill.Parent = row
 		Skin.corner(pill, 10)
 		Skin.pad(pill, 6, 6, 0, 0)
@@ -2830,29 +2945,60 @@ end
 
 -- ─── row builder ─────────────────────────────────────────────────────────────
 
-local function buildRow(message: any, revealed: boolean, groupedOverride: boolean?): TextButton
+local function buildRow(message: any, revealed: boolean, groupedOverride: boolean?): GuiObject
 	local kind = message.kind or "chat"
 	if Render.Renderers[kind] then
 		return Render.Renderers[kind](message, Config.Interface.theme)
 	end
 
+	local cfg = Config.Interface
 	local style = KIND_STYLE[kind] or KIND_STYLE.chat
 	local override = KIND_OVERRIDE[kind]
 	local d = density()
 	local grouped = if groupedOverride ~= nil then groupedOverride else shouldGroup(message)
 	_lastGrouped = grouped
 
-	local row = Instance.new("TextButton")
+	-- rows are Frames (Active = false) so plain messages don't sink clicks meant for
+	-- game UI behind the panel; interactive messages get a hit overlay lower down.
+	local row = Instance.new("Frame")
 	row.Name = "Row"
 	row.AutomaticSize = Enum.AutomaticSize.Y
 	row.Size = UDim2.new(1, 0, 0, 0)
-	row.BackgroundColor3 = override and tk(override.bg_key or "background") or Color3.new(0, 0, 0)
-	row.BackgroundTransparency = override and override.bg_key and 0.75 or 1
-	row.Text = ""
-	row.AutoButtonColor = false
+	row.Active = false
+	row.BorderSizePixel = 0
+
+	local bgKey = override and override.bg_key
+	local cardBg = message.background -- optional per-message Color3
+	local carded = false
+	if bgKey then
+		row.BackgroundColor3 = tk(bgKey)
+		row.BackgroundTransparency = 0.75
+	elseif cardBg then
+		row.BackgroundColor3 = cardBg
+		row.BackgroundTransparency = message.background_transparency or 0
+	elseif cfg.message_background then
+		row.BackgroundColor3 = tk("message_bg")
+		row.BackgroundTransparency = tk("message_bg_transparency")
+		carded = true
+	else
+		row.BackgroundColor3 = Color3.new(0, 0, 0)
+		row.BackgroundTransparency = 1
+	end
+
 	Skin.corner(row, 4)
-	Skin.pad(row, 4, 4, d.row_pad, d.row_pad)
+	Skin.pad(row, 6, 6, d.row_pad, d.row_pad)
 	Skin.list(row, nil, 2)
+
+	if carded then
+		row.MouseEnter:Connect(function()
+			row.BackgroundColor3 = tk("message_hover")
+			row.BackgroundTransparency = tk("message_hover_transparency")
+		end)
+		row.MouseLeave:Connect(function()
+			row.BackgroundColor3 = tk("message_bg")
+			row.BackgroundTransparency = tk("message_bg_transparency")
+		end)
+	end
 
 	local lo = 0
 
@@ -2931,24 +3077,36 @@ local function buildRow(message: any, revealed: boolean, groupedOverride: boolea
 		inlineLabel(table.concat(hParts))
 	end
 
-	-- whole-row click: reveal spoilers + surface mention/link/card events
-	row.MouseButton1Click:Connect(function()
-		Events.CardClicked:Fire(message, row)
-		for _, m in ctx.mentions do
-			Events.MentionClicked:Fire(m.mention_id or 0, m.mention_name or "", message)
-		end
-		for _, url in ctx.links do
-			Events.LinkClicked:Fire(url, message)
-		end
-		if ctx.hasSpoiler then
-			local entry = _registry[message.metadata.id]
-			if entry then
-				entry.revealed = not entry.revealed
-				Render.RebuildRow(message.metadata.id)
-				Events.SpoilerRevealed:Fire(message)
+	-- interactive overlay ONLY when there's something to click (spoilers/mentions/
+	-- links); otherwise the row stays a click-through Frame. Interactive children
+	-- below (reactions, reply bar, embed buttons, toolbar) sit above it via ZIndex.
+	if ctx.hasSpoiler or #ctx.mentions > 0 or #ctx.links > 0 then
+		local hit = Instance.new("TextButton")
+		hit.Name = "Hit"
+		hit.Size = UDim2.new(1, 0, 1, 0)
+		hit.BackgroundTransparency = 1
+		hit.Text = ""
+		hit.AutoButtonColor = false
+		hit.ZIndex = 2
+		hit.Parent = row
+		hit.MouseButton1Click:Connect(function()
+			Events.CardClicked:Fire(message, row)
+			for _, m in ctx.mentions do
+				Events.MentionClicked:Fire(m.mention_id or 0, m.mention_name or "", message)
 			end
-		end
-	end)
+			for _, url in ctx.links do
+				Events.LinkClicked:Fire(url, message)
+			end
+			if ctx.hasSpoiler then
+				local entry = _registry[message.metadata.id]
+				if entry then
+					entry.revealed = not entry.revealed
+					Render.RebuildRow(message.metadata.id)
+					Events.SpoilerRevealed:Fire(message)
+				end
+			end
+		end)
+	end
 
 	if message.tags and #message.tags > 0 then
 		buildTags(message, lo).Parent = row; lo += 1
@@ -13458,10 +13616,22 @@ function InputFilter.Attach(
 		setVisible(flagged)
 	end
 
+	-- Debounce the check: the blocklist can be a few thousand patterns, so run it
+	-- a beat after typing settles rather than on every keystroke.
+	local DEBOUNCE = 0.25
+	local pending = 0
+	local function schedule()
+		pending += 1
+		local token = pending
+		task.delay(DEBOUNCE, function()
+			if token == pending then update() end
+		end)
+	end
+
 	-- Reset state immediately in case textBox already has text
 	update()
 
-	local connection = textBox:GetPropertyChangedSignal("Text"):Connect(update)
+	local connection = textBox:GetPropertyChangedSignal("Text"):Connect(schedule)
 
 	-- Clear the warning once the message is actually sent
 	textBox.FocusLost:Connect(function(enterPressed)
@@ -13928,15 +14098,18 @@ mod("Advise", _15, [[
 -- Local case-insensitive blocklist backstop layered on top of Roblox's
 -- TextService filter (not a replacement). The blocklist is sourced from Proflis
 -- (fetched over HttpService on the server, relayed to clients) so no profane
--- string literals live in the scripts themselves. Detection runs over a
--- *collapsed, normalized* copy of the text -- spacing/punctuation dropped,
--- digit-leet mapped to letters -- while masking is applied back to the original
--- via an index map. That catches "f u c k", "f.u.c.k", "f0ck", "fvck", "f*ck",
--- AND "fck"-style vowel dropping without relying on TextService. Blocked words
--- match as patterns where vowels are optional (consonants stay literal and
--- adjacent), so "fuck" also matches "fck" without opening matches on unrelated
--- words. The list is loaded lazily on first use, so it works no matter when
--- Proflis.Start() runs relative to this module loading.
+-- string literals live in the scripts themselves.
+--
+-- Matching is done with a per-word Lua pattern built so that:
+--   * separators between letters are tolerated (catches "f u c k", "f.u.c.k"),
+--   * digit/symbol leet is folded to letters first (catches "f0ck"),
+--   * INTERIOR vowels are optional (catches vowel-dropping like "fck"), while
+--     the FIRST and LAST characters stay literal, and
+--   * the match must sit on WORD BOUNDARIES (%f frontiers).
+-- The word-boundary requirement is what keeps this from censoring everything --
+-- "class" never matches "ass", "bus" never matches "abuse" -- while still
+-- catching the standalone/obfuscated word. An allow-list handles the rare
+-- Scunthorpe case. The list loads lazily on first use.
 
 local _Utility  = script.Parent
 local _Packages = _Utility.Parent._Packages
@@ -13946,12 +14119,7 @@ local AdviseFilter = {}
 
 type Entry = { word: string, pattern: string }
 
-local SEP: { [string]: boolean } = {
-	[" "] = true, ["."] = true, ["-"] = true, ["_"] = true,
-	["*"] = true, [","] = true, ["'"] = true,
-}
-
--- digit/symbol leet mapped to letters
+-- digit/symbol leet folded to letters (applied in place, length-preserving)
 local LEET: { [string]: string } = {
 	["4"] = "a", ["@"] = "a", ["3"] = "e", ["1"] = "i", ["!"] = "i",
 	["0"] = "o", ["5"] = "s", ["$"] = "s", ["7"] = "t", ["8"] = "b", ["9"] = "g",
@@ -13959,29 +14127,41 @@ local LEET: { [string]: string } = {
 
 local VOWELS: { [string]: boolean } = { a = true, e = true, i = true, o = true, u = true }
 
-local SENTINEL = "\1" -- non-letter boundary a blocked word can never cross
+-- optional run of non-word characters allowed between letters of a blocked word
+local INNER_SEP = "[^%w]*"
 
--- Escapes a single char for use inside a Lua pattern.
-local function escapeLiteral(c: string): string
-	if c:match("%w") then
-		return c
+-- Lower-case + fold leet, preserving byte positions so matches map straight back.
+local function leetLower(text: string): string
+	local out = table.create(#text)
+	for i = 1, #text do
+		local ch = text:sub(i, i)
+		out[i] = LEET[ch] or ch:lower()
 	end
+	return table.concat(out)
+end
+
+local function escapeLiteral(c: string): string
+	if c:match("%w") then return c end
 	return "%" .. c
 end
 
--- Builds a find-pattern for a word where vowels are optional (catches
--- missing-vowel obfuscation like "fck" for "fuck") and consonants stay literal
--- and adjacent (keeps unrelated words like "flock" from matching).
+-- Build the boundary-anchored, separator-tolerant, interior-vowel-optional pattern.
 local function wordToPattern(word: string): string
-	local parts = {}
-	for i = 1, #word do
+	local n = #word
+	local parts: { string } = { "%f[%w]" } -- must start at a word boundary
+	for i = 1, n do
 		local c = word:sub(i, i)
-		if VOWELS[c] then
+		local interior = i > 1 and i < n
+		if interior and VOWELS[c] then
 			table.insert(parts, "[aeiou]?")
 		else
 			table.insert(parts, escapeLiteral(c))
 		end
+		if i < n then
+			table.insert(parts, INNER_SEP)
+		end
 	end
+	table.insert(parts, "%f[%W]") -- ...and end at a word boundary
 	return table.concat(parts)
 end
 
@@ -13993,10 +14173,8 @@ end
 local _blocked: { Entry } = {}
 local _allowed: { [string]: boolean } = {}
 
--- Lazily build the blocklist from Proflis the first time we filter anything.
--- Deferred so it doesn't matter whether Proflis.Start() (server fetch) has run
--- yet when this module is required. Fail-open: an empty list means we simply
--- lean entirely on Roblox's TextService.
+-- Lazily build the blocklist from Proflis the first time we filter anything, so
+-- it doesn't matter whether Proflis.Start() (server fetch) has run yet. Fail-open.
 local _loaded = false
 local function ensureLoaded()
 	if _loaded then return end
@@ -14004,89 +14182,45 @@ local function ensureLoaded()
 	local ok, list = pcall(Proflis.Get)
 	if not ok or type(list) ~= "table" then return end
 	for key in list do
-		if type(key) == "string" and key ~= "" then
+		-- ignore very short words (too collision-prone) and non-strings
+		if type(key) == "string" and #key >= 3 then
 			table.insert(_blocked, makeEntry(key))
 		end
 	end
 end
 
--- Build a collapsed normalized string plus a map from normalized position ->
--- original byte index, so a match can be projected back onto the source text.
-local function normalize(text: string): (string, { number })
-	local chars: { string } = {}
-	local map: { number } = {}
-	for i = 1, #text do
-		local ch = text:sub(i, i)
-		local low = ch:lower()
-		if low:match("%a") then
-			table.insert(chars, low)
-			table.insert(map, i)
-		elseif LEET[ch] then
-			table.insert(chars, LEET[ch])
-			table.insert(map, i)
-		elseif SEP[ch] then
-			-- dropped
-		else
-			table.insert(chars, SENTINEL)
-			table.insert(map, i)
-		end
-	end
-	return table.concat(chars), map
-end
-
--- Expands a byte span in the ORIGINAL text out to the full contiguous word/number
--- run it sits inside, so the allow list can be checked against the whole enclosing
--- word rather than just the matched substring.
-local function expandToEnclosingWord(text: string, startByte: number, endByte: number): (number, number)
+-- Expand a byte span out to the whole word/number run it sits in, for allow-list checks.
+local function expandToEnclosingWord(text: string, s: number, e: number): (number, number)
 	local len = #text
-	local s, e = startByte, endByte
-
 	local function isWordChar(c: string): boolean
 		return c ~= "" and (c:match("%w") ~= nil or c == "'")
 	end
-
-	while s > 1 and isWordChar(text:sub(s - 1, s - 1)) do
-		s -= 1
-	end
-	while e < len and isWordChar(text:sub(e + 1, e + 1)) do
-		e += 1
-	end
-
+	while s > 1 and isWordChar(text:sub(s - 1, s - 1)) do s -= 1 end
+	while e < len and isWordChar(text:sub(e + 1, e + 1)) do e += 1 end
 	return s, e
 end
 
--- Original [start, stop] spans to mask, plus the matched original substring.
--- Allow-listed enclosing words are skipped.
+local function isAllowedAt(text: string, s: number, e: number): boolean
+	if next(_allowed) == nil then return false end
+	local ws, we = expandToEnclosingWord(text, s, e)
+	return _allowed[text:sub(ws, we):lower()] == true
+end
+
 local function findSpans(text: string): { { start: number, stop: number, match: string } }
 	ensureLoaded()
-	local norm, map = normalize(text)
-	local spans: { { start: number, stop: number, match: string } } = {}
-
+	local hay = leetLower(text)
+	local spans = {}
 	for _, entry in _blocked do
 		local from = 1
 		while true do
-			local s, e = norm:find(entry.pattern, from)
+			local s, e = hay:find(entry.pattern, from)
 			if not s then break end
-
-			local byteStart, byteEnd = map[s], map[e]
-
-			local skip = false
-			if next(_allowed) ~= nil then
-				local ws, we = expandToEnclosingWord(text, byteStart, byteEnd)
-				local enclosing = text:sub(ws, we):lower()
-				if _allowed[enclosing] then
-					skip = true
-				end
+			if not isAllowedAt(text, s, e) then
+				table.insert(spans, { start = s, stop = e, match = text:sub(s, e) })
 			end
-
-			if not skip then
-				table.insert(spans, { start = byteStart, stop = byteEnd, match = text:sub(byteStart, byteEnd) })
-			end
-
-			from = (e >= s) and (e + 1) or (s + 1) -- guard against zero-length matches
+			from = (e >= s) and (e + 1) or (s + 1)
 		end
 	end
-
 	return spans
 end
 
@@ -14110,7 +14244,18 @@ end
 
 function AdviseFilter.ContainsBlockedWord(text: string): boolean
 	if text == "" then return false end
-	return #findSpans(text) > 0
+	ensureLoaded()
+	local hay = leetLower(text)
+	local hasAllow = next(_allowed) ~= nil
+	for _, entry in _blocked do
+		local s, e = hay:find(entry.pattern)
+		if s then
+			if not hasAllow or not isAllowedAt(text, s, e) then
+				return true
+			end
+		end
+	end
+	return false
 end
 
 -- Extend the blocklist at runtime (surfaced as Bold.AddBlockedWords).
@@ -14124,7 +14269,6 @@ function AdviseFilter.Add(words: { string } | string)
 	end
 end
 
--- Remove a word from the blocklist at runtime.
 function AdviseFilter.Remove(word: string)
 	local lower = word:lower()
 	for i, entry in _blocked do
@@ -14157,7 +14301,6 @@ end
 
 -- ─── Match reporting (logging / scoring / warning reasons) ───────────────────
 
--- Returns the matched original substrings, e.g. { "f*ck", "fck" }.
 function AdviseFilter.Detect(text: string): { string }
 	local spans = findSpans(text)
 	local matches = table.create(#spans)
@@ -14167,7 +14310,6 @@ function AdviseFilter.Detect(text: string): { string }
 	return matches
 end
 
--- Number of hits -- convenient for scoring/thresholds in a warning system.
 function AdviseFilter.Count(text: string): number
 	return #findSpans(text)
 end
@@ -14227,6 +14369,12 @@ local DARK: Types.Theme = {
 	quote_text               = Color3.fromRGB(180, 180, 190),
 	reaction_bg              = Color3.fromRGB(40,  40, 46),
 	reaction_active          = Color3.fromRGB(108, 62, 244),
+
+	-- per-message card background (used when interface.message_background is on)
+	message_bg               = Color3.fromRGB(255, 255, 255),
+	message_bg_transparency  = 0.94,
+	message_hover            = Color3.fromRGB(255, 255, 255),
+	message_hover_transparency = 0.97,
 
 	autocomplete_bg          = Color3.fromRGB(43, 45, 49),
 	autocomplete_hover       = Color3.fromRGB(64, 66, 73),
@@ -14321,6 +14469,17 @@ Config.Interface = {
 	reactions        = true,
 	reply_enabled    = true,
 	quick_reactions  = { "👍", "❤️", "😂", "🔥", "🎉" },
+
+	-- visuals
+	backdrop            = true,  -- the panel behind the whole message list
+	message_background  = false, -- a card behind each message (Discord-ish)
+	collapsible         = true,  -- long messages get a show more/less toggle
+	collapse_lines      = 6,     -- collapse threshold, in lines
+	open_animation      = true,  -- animate the window opening/closing
+
+	-- social indicators
+	show_friend_badge   = false, -- a dot next to friends' names
+	show_blocked        = false, -- mark/handle Roblox-blocked users
 }
 
 Config.Parsing = {
