@@ -1,0 +1,1055 @@
+<!doctype html>
+<html lang="en" dir="ltr" class="plugin-moonwave plugin-id-moonwave" data-has-hydrated="false">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Docusaurus v3.10.1">
+<title data-rh="true">Bold</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://mkl48.github.io/BOLD/api/Bold"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docusaurus_tag" content="default"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docsearch:docusaurus_tag" content="default"><meta data-rh="true" property="og:title" content="Bold"><meta data-rh="true" name="description" content="The chat library&#x27;s entry point. Require it on both realms and call [Bold.Start].
+Everything tunable flows through [Bold.Configure]; messages go out via
+[Bold.Message] or the fluent [Builder] from [Bold.Compose]."><meta data-rh="true" property="og:description" content="The chat library&#x27;s entry point. Require it on both realms and call [Bold.Start].
+Everything tunable flows through [Bold.Configure]; messages go out via
+[Bold.Message] or the fluent [Builder] from [Bold.Compose]."><link data-rh="true" rel="canonical" href="https://mkl48.github.io/BOLD/api/Bold"><link data-rh="true" rel="alternate" href="https://mkl48.github.io/BOLD/api/Bold" hreflang="en"><link data-rh="true" rel="alternate" href="https://mkl48.github.io/BOLD/api/Bold" hreflang="x-default"><link rel="stylesheet" href="/BOLD/assets/css/styles.7ecb2721.css">
+<script src="/BOLD/assets/js/runtime~main.8fbfd740.js" defer="defer"></script>
+<script src="/BOLD/assets/js/main.a003fb7c.js" defer="defer"></script>
+</head>
+<body>
+<svg style="display: none;"><defs>
+<symbol id="theme-svg-external-link" viewBox="0 0 24 24"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
+</defs></svg>
+<script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")),document.documentElement.setAttribute("data-theme-choice",t||"system")}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><div role="region" aria-label="Skip to main content"><a class="skipToContent_fXgn" href="#__docusaurus_skipToContent_fallback">Skip to main content</a></div><nav aria-label="Main" class="theme-layout-navbar navbar navbar--fixed-top"><div class="navbar__inner"><div class="theme-layout-navbar-left navbar__items"><button aria-label="Toggle navigation bar" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/BOLD/"><b class="navbar__title text--truncate">Bold</b></a><a class="navbar__item navbar__link" href="/BOLD/docs/intro">Docs</a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/BOLD/api/">API</a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><a href="https://github.com/mkl48/BOLD" target="_blank" rel="noopener noreferrer" class="navbar__item navbar__link">GitHub<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="system mode" aria-label="Switch between dark and light mode (currently system mode)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP systemToggleIcon_QzmC"><path fill="currentColor" d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"></path></svg></button></div><div class="navbarSearchContainer_Bca1"><div class="navbar__search"><span aria-label="expand searchbar" role="button" class="search-icon" tabindex="0"></span><input id="search_input_react" type="search" placeholder="Loading..." aria-label="Search" class="navbar__search-input search-bar" disabled=""></div></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="theme-layout-main main-wrapper mainWrapper_z2l0 docPageContainer_wNNk"><div class="docPage_Dpn1"><div class="docSidebarContainer_o_re"><div class="sidebar_njMd"><nav aria-label="Docs sidebar" class="menu thin-scrollbar menu_SIkG"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link menu__link--active" aria-current="page" href="/BOLD/api/Bold"><span title="​Bold" class="linkLabel_WmDU">​Bold</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-1 menu__list-item"><a class="menu__link" href="/BOLD/api/Builder"><span title="​Builder" class="linkLabel_WmDU">​Builder</span></a></li></ul></nav></div></div><main class="docMainContainer_HJE1"><div class="container padding-vert--lg"><div class="row"><div class="col docItemCol_MU3C"><div class="docItemContainer_Wv98"><article><div class="member_J0w1 markdown"><div class="tocCollapsible_ETCw theme-doc-toc-mobile tocMobile_oUs_"><button type="button" class="clean-btn tocCollapsibleButton_TO0P">On this page</button></div><header><h1 class="docTitle_mZRt" style="text-decoration:none"><span style="display:inline-block">Bold</span></h1><div class="luaClassTags_EipM"></div><div>
+<p>
+  The chat library's entry point. Require it on both realms and call <a href="/BOLD/api/Bold#Start">Bold.Start</a>.
+  Everything tunable flows through <a href="/BOLD/api/Bold#Configure">Bold.Configure</a>; messages go out via
+  <a href="/BOLD/api/Bold#Message">Bold.Message</a> or the fluent <a href="/BOLD/api/Builder">Builder</a> from <a href="/BOLD/api/Bold#Compose">Bold.Compose</a>.
+</p>
+</div></header><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="functions">Functions<a href="#functions" class="hash-link" aria-label="Direct link to Functions" title="Direct link to Functions" translate="no">​</a></h2><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="Configure"><code style="text-decoration:none">Configure</code><a href="#Configure" class="hash-link" aria-label="Direct link to Configure" title="Direct link to Configure" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L53"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">Configure</code><code>(</code><code>config<!-- -->: </code><code class="blue_P4bS">Types.BoldConfig?</code><code>) → </code><code>(</code><code>)</code></div><div>
+<p>
+  Deep-merges a [BoldConfig] into the live config. Safe before or after <a href="/BOLD/api/Bold#Start">Bold.Start</a>.
+  Sections: <code>interface</code>, <code>parsing</code>, <code>filter</code>, <code>keys</code>, <code>animation</code>, <code>sounds</code>.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="Theme"><code style="text-decoration:none">Theme</code><a href="#Theme" class="hash-link" aria-label="Direct link to Theme" title="Direct link to Theme" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L65"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">Theme</code><code>(</code><code>preset<!-- -->: </code><code class="blue_P4bS">string</code><code>) → </code><code class="blue_P4bS">boolean</code></div><div>
+<p>
+  Applies a built-in theme preset (<code>dark</code>, <code>light</code>, <code>midnight</code>, <code>neon</code>). Returns
+  <code>false</code> if the name is unknown.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="Layout"><code style="text-decoration:none">Layout</code><a href="#Layout" class="hash-link" aria-label="Direct link to Layout" title="Direct link to Layout" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L78"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">Layout</code><code>(</code><code>preset<!-- -->: </code><code class="blue_P4bS">string</code><code>) → </code><code class="blue_P4bS">boolean</code></div><div>
+<p>
+  Applies a window layout preset (<code>top_left</code>, <code>top_right</code>, <code>bottom_left</code>,
+  <code>bottom_right</code>, <code>center</code>). Returns <code>false</code> if the name is unknown.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="Start"><code style="text-decoration:none">Start</code><a href="#Start" class="hash-link" aria-label="Direct link to Start" title="Direct link to Start" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L156"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">Start</code><code>(</code><code>config<!-- -->: </code><code class="blue_P4bS">Types.BoldConfig?</code><code>) → </code><code>(</code><code>)</code></div><div>
+<p>
+  Boots Bold on the current realm. On the server it wires the receive → filter →
+  broadcast pipeline; on the client it builds the UI and input. Accepts an optional
+  [BoldConfig] (the same shape <a href="/BOLD/api/Bold#Configure">Bold.Configure</a> takes). Call once per realm.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="Message"><code style="text-decoration:none">Message</code><a href="#Message" class="hash-link" aria-label="Direct link to Message" title="Direct link to Message" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L199"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">Message</code><code>(</code><code>config<!-- -->: </code><code class="blue_P4bS">Types.MessageClass?</code><code>) → </code><code class="blue_P4bS">Types.MessageClass</code></div><div>
+<p>
+  Constructs and sends a message. On the server it broadcasts, or whispers when
+  <code>metadata.recipient_id</code> is set; on the client it goes through the send pipeline.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="Compose"><code style="text-decoration:none">Compose</code><a href="#Compose" class="hash-link" aria-label="Direct link to Compose" title="Direct link to Compose" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L228"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">Compose</code><code>(</code><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="/BOLD/api/Builder">Builder</a></code></div><div>
+<p>
+  Returns a fluent <a href="/BOLD/api/Builder">Builder</a> for assembling a message from markdown + embeds, e.g.
+  <code>Bold.Compose():Bold("gg"):Mention(plr):Send()</code>.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="Dispatch"><code style="text-decoration:none">Dispatch</code><a href="#Dispatch" class="hash-link" aria-label="Direct link to Dispatch" title="Direct link to Dispatch" translate="no">​</a></h3><span class="badge_Ba2I" style="color:#00CC67"><span class="badgeTooltip_cWXP">This item only works when running on the server.</span><span class="badgeToolTipTail_H9D_"><svg fill="#00CC67" xmlns="http://www.w3.org/2000/svg" version="1.1" x="0px" y="0px" viewBox="0 0 90 90" role="img" aria-label="This item only works when running on the server."><polygon points="6.125,72.421 58.544,88.523 58.544,24.372 6.125,8.269 "></polygon><polygon points="79.818,15.77 79.868,15.755 29.615,1.453 10.328,6.318 60.102,21.609 "></polygon><path d="M61.643,78.738l22.232-6.582V17.801l-22.232,6.584V78.738z M73.811,69.257c-1.174,0-2.125-1.19-2.125-2.659  c0-1.468,0.951-2.658,2.125-2.658c1.172,0,2.123,1.19,2.123,2.658C75.934,68.066,74.982,69.257,73.811,69.257z M64.898,32.121  l16.336-4.41v7.117l-16.336,4.409V32.121z M64.898,41.292l16.336-4.41v7.116l-16.336,4.409V41.292z M64.898,50.463l16.336-4.411  v7.116l-16.336,4.411V50.463z"></path><polygon points="83.875,74.893 61.643,81.477 61.643,88.547 83.875,81.963 "></polygon></svg> <!-- -->Server</span></span><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L239"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">Dispatch</code><code>(</code><div class="inset_uKQm"><div><code>config<!-- -->: </code><code class="blue_P4bS">Types.MessageClass?</code><code>,</code></div><div><code>target<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="https://developer.roblox.com/en-us/api-reference/class/Player" target="_blank" rel="noopener noreferrer">Player?<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound" style="color:gray;vertical-align:middle;margin-left:2px"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg></a></code></div></div><code>) → </code><code class="blue_P4bS">Types.MessageClass?</code></div><div>
+<p>
+  Sends a server-originated message without routing through the client SEND channel.
+  Pass <code>target</code> to whisper it to one player.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="Image"><code style="text-decoration:none">Image</code><a href="#Image" class="hash-link" aria-label="Direct link to Image" title="Direct link to Image" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L255"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">Image</code><code>(</code><div class="inset_uKQm"><div><code>image_id<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>config<!-- -->: </code><code class="blue_P4bS">Types.ImageEmbed?</code></div></div><code>) → </code><code class="blue_P4bS">Types.ImageEmbed</code></div><div>
+<p>Builds an Image embed for a message's <code>content.embeds</code>.</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="Gif"><code style="text-decoration:none">Gif</code><a href="#Gif" class="hash-link" aria-label="Direct link to Gif" title="Direct link to Gif" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L265"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">Gif</code><code>(</code><div class="inset_uKQm"><div><code>video_id<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>config<!-- -->: </code><code class="purple_ieR2">{</code><div class="inset_uKQm"><code>loop<!-- -->: </code><code class="blue_P4bS">boolean?</code><code class="purple_ieR2">,</code></div><div class="inset_uKQm"><code>autoplay<!-- -->: </code><code class="blue_P4bS">boolean?</code><code class="purple_ieR2">,</code></div><div class="inset_uKQm"><code>color<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="https://developer.roblox.com/en-us/api-reference/datatype/Color3" target="_blank" rel="noopener noreferrer">Color3?<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound" style="color:gray;vertical-align:middle;margin-left:2px"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg></a></code></div><code class="purple_ieR2">}</code><code class="blue_P4bS">?</code></div></div><code>) → </code><code class="blue_P4bS">Types.GifEmbed</code></div><div>
+<p>Builds a Gif (VideoFrame) embed for a message's <code>content.embeds</code>.</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="Sticker"><code style="text-decoration:none">Sticker</code><a href="#Sticker" class="hash-link" aria-label="Direct link to Sticker" title="Direct link to Sticker" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L275"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">Sticker</code><code>(</code><div class="inset_uKQm"><div><code>sticker_id<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>config<!-- -->: </code><code class="purple_ieR2">{</code><div class="inset_uKQm"><code>size<!-- -->: </code><code class="blue_P4bS">number?</code><code class="purple_ieR2">,</code></div><div class="inset_uKQm"><code>color<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="https://developer.roblox.com/en-us/api-reference/datatype/Color3" target="_blank" rel="noopener noreferrer">Color3?<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound" style="color:gray;vertical-align:middle;margin-left:2px"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg></a></code></div><code class="purple_ieR2">}</code><code class="blue_P4bS">?</code></div></div><code>) → </code><code class="blue_P4bS">Types.StickerEmbed</code></div><div>
+<p>Builds a Sticker embed for a message's <code>content.embeds</code>.</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="RichText"><code style="text-decoration:none">RichText</code><a href="#RichText" class="hash-link" aria-label="Direct link to RichText" title="Direct link to RichText" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L285"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">RichText</code><code>(</code><code>config<!-- -->: </code><code class="blue_P4bS">Types.RichTextEmbed</code><code>) → </code><code class="blue_P4bS">Types.RichTextEmbed</code></div><div>
+<p>Builds a RichText embed (title, description, fields) for a message's <code>content.embeds</code>.</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="Action"><code style="text-decoration:none">Action</code><a href="#Action" class="hash-link" aria-label="Direct link to Action" title="Direct link to Action" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L295"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">Action</code><code>(</code><div class="inset_uKQm"><div><code>action_id<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>config<!-- -->: </code><code class="purple_ieR2">{</code><div class="inset_uKQm"><code>title<!-- -->: </code><code class="blue_P4bS">string?</code><code class="purple_ieR2">,</code></div><div class="inset_uKQm"><code>button_text<!-- -->: </code><code class="blue_P4bS">string?</code><code class="purple_ieR2">,</code></div><div class="inset_uKQm"><code>style<!-- -->: </code><code class="green_DgR4">(</code><code class="blue_P4bS">&quot;primary&quot;</code><code class="op_lSLc"> | </code><code class="blue_P4bS">&quot;danger&quot;</code><code class="op_lSLc"> | </code><code class="blue_P4bS">&quot;ghost&quot;</code><code class="green_DgR4">)</code><code class="blue_P4bS">?</code><code class="purple_ieR2">,</code></div><div class="inset_uKQm"><code>color<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="https://developer.roblox.com/en-us/api-reference/datatype/Color3" target="_blank" rel="noopener noreferrer">Color3?<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound" style="color:gray;vertical-align:middle;margin-left:2px"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg></a></code><code class="purple_ieR2">,</code></div><div class="inset_uKQm"></div><code class="purple_ieR2">}</code><code class="blue_P4bS">?</code></div></div><code>) → </code><code class="blue_P4bS">Types.ActionEmbed</code></div><div>
+<p>Builds an Action (button) embed. Handle clicks via the <code>EmbedActionFired</code> event.</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="On"><code style="text-decoration:none">On</code><a href="#On" class="hash-link" aria-label="Direct link to On" title="Direct link to On" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L313"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">On</code><code>(</code><div class="inset_uKQm"><div><code>eventName<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>callback<!-- -->: </code><code class="purple_ieR2">(</code><code class="blue_P4bS">...any</code><code class="purple_ieR2">)</code><code class="purple_ieR2"> → </code><code class="purple_ieR2">(</code><code class="purple_ieR2">)</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="https://developer.roblox.com/en-us/api-reference/datatype/RBXScriptConnection" target="_blank" rel="noopener noreferrer">RBXScriptConnection<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound" style="color:gray;vertical-align:middle;margin-left:2px"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg></a></code></div><div>
+<p>
+  Connects to a Bold event by name (<code>MessageReceived</code>, <code>Mentioned</code>, <code>ReactionAdded</code>,
+  <code>LinkClicked</code>, <code>ThemeChanged</code>, …). Returns the connection.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="Once"><code style="text-decoration:none">Once</code><a href="#Once" class="hash-link" aria-label="Direct link to Once" title="Direct link to Once" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L323"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">Once</code><code>(</code><div class="inset_uKQm"><div><code>eventName<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>callback<!-- -->: </code><code class="purple_ieR2">(</code><code class="blue_P4bS">...any</code><code class="purple_ieR2">)</code><code class="purple_ieR2"> → </code><code class="purple_ieR2">(</code><code class="purple_ieR2">)</code></div></div><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="https://developer.roblox.com/en-us/api-reference/datatype/RBXScriptConnection" target="_blank" rel="noopener noreferrer">RBXScriptConnection<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound" style="color:gray;vertical-align:middle;margin-left:2px"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg></a></code></div><div>
+<p>Like <a href="/BOLD/api/Bold#On">Bold.On</a>, but auto-disconnects after the first fire.</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="Hook"><code style="text-decoration:none">Hook</code><a href="#Hook" class="hash-link" aria-label="Direct link to Hook" title="Direct link to Hook" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L334"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">Hook</code><code>(</code><div class="inset_uKQm"><div><code>hookName<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>fn<!-- -->: </code><code class="purple_ieR2">(</code><code class="blue_P4bS">...any</code><code class="purple_ieR2">)</code><code class="purple_ieR2"> → </code><code class="purple_ieR2">(</code><code class="purple_ieR2">)</code></div></div><code>) → </code><code>(</code><code>)</code></div><div>
+<p>
+  Registers an observational lifecycle hook (<code>BeforeSend</code>, <code>AfterDeliver</code>,
+  <code>BeforeRender</code>, …). Fire-and-forget: it can observe but not alter or drop a message.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="OnMentioned"><code style="text-decoration:none">OnMentioned</code><a href="#OnMentioned" class="hash-link" aria-label="Direct link to OnMentioned" title="Direct link to OnMentioned" translate="no">​</a></h3><span class="badge_Ba2I" style="color:#349AD5"><span class="badgeTooltip_cWXP">This item only works when running on the client.</span><span class="badgeToolTipTail_H9D_"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 337 304" fill="#349AD5" role="img" aria-label="This item only works when running on the client."><path d="M0 201h337v36H0v-36zm0 0zM0 0v188h337V0H0zM218 287h30c12 0 12 17 0 17H88c-11 0-11-17 0-17h31l10-39h79l10 39z"></path></svg> <!-- -->Client</span></span><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L344"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">OnMentioned</code><code>(</code><code>fn<!-- -->: </code><code class="purple_ieR2">(</code><code>message<!-- -->: </code><code class="blue_P4bS">any</code><code class="purple_ieR2">)</code><code class="purple_ieR2"> → </code><code class="purple_ieR2">(</code><code class="purple_ieR2">)</code><code>) → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="https://developer.roblox.com/en-us/api-reference/datatype/RBXScriptConnection" target="_blank" rel="noopener noreferrer">RBXScriptConnection<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound" style="color:gray;vertical-align:middle;margin-left:2px"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg></a></code></div><div>
+<p>Fires when the local player is @mentioned in a delivered message.</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="Guard"><code style="text-decoration:none">Guard</code><a href="#Guard" class="hash-link" aria-label="Direct link to Guard" title="Direct link to Guard" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L354"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">Guard</code><code>(</code><code>fn<!-- -->: </code><code class="purple_ieR2">(</code><div class="inset_uKQm"><code>message<!-- -->: </code><code class="blue_P4bS">any</code><code class="purple_ieR2">,</code></div><div class="inset_uKQm"><code>player<!-- -->: </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="https://developer.roblox.com/en-us/api-reference/class/Player" target="_blank" rel="noopener noreferrer">Player?<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound" style="color:gray;vertical-align:middle;margin-left:2px"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg></a></code></div><code class="purple_ieR2">)</code><code class="purple_ieR2"> → </code><code class="purple_ieR2">(</code><code class="blue_P4bS">boolean?</code><code class="purple_ieR2">)</code><code>) → </code><code>(</code><code>)</code></div><div>
+<p>
+  Installs a message guard for the current realm. Return <code>false</code> to drop a message
+  before it is delivered (server) or rendered (client).
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="Classify"><code style="text-decoration:none">Classify</code><a href="#Classify" class="hash-link" aria-label="Direct link to Classify" title="Direct link to Classify" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L368"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">Classify</code><code>(</code><div class="inset_uKQm"><div><code>message<!-- -->: </code><code class="blue_P4bS">Types.MessageClass</code><code>,</code></div><div><code>kind<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>tags<!-- -->: </code><code class="purple_ieR2">{</code><code class="blue_P4bS">string</code><code class="purple_ieR2">}</code><code class="blue_P4bS">?</code></div></div><code>) → </code><code class="blue_P4bS">Types.MessageClass</code></div><div>
+<p>Sets a message's <code>kind</code> (and optional tags), firing the relevant events.</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="Tag"><code style="text-decoration:none">Tag</code><a href="#Tag" class="hash-link" aria-label="Direct link to Tag" title="Direct link to Tag" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L380"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">Tag</code><code>(</code><div class="inset_uKQm"><div><code>message<!-- -->: </code><code class="blue_P4bS">Types.MessageClass</code><code>,</code></div><div><code>...<!-- -->: </code><code class="blue_P4bS">string</code></div></div><code>) → </code><code class="blue_P4bS">Types.MessageClass</code></div><div>
+<p>Adds one or more tags to a message, de-duplicated.</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="Pin"><code style="text-decoration:none">Pin</code><a href="#Pin" class="hash-link" aria-label="Direct link to Pin" title="Direct link to Pin" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L394"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">Pin</code><code>(</code><code>message<!-- -->: </code><code class="blue_P4bS">Types.MessageClass</code><code>) → </code><code class="blue_P4bS">Types.MessageClass</code></div><div>
+<p>Pins a message card (adds the pinned indicator).</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="Unpin"><code style="text-decoration:none">Unpin</code><a href="#Unpin" class="hash-link" aria-label="Direct link to Unpin" title="Direct link to Unpin" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L404"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">Unpin</code><code>(</code><code>message<!-- -->: </code><code class="blue_P4bS">Types.MessageClass</code><code>) → </code><code class="blue_P4bS">Types.MessageClass</code></div><div>
+<p>Unpins a message card.</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="React"><code style="text-decoration:none">React</code><a href="#React" class="hash-link" aria-label="Direct link to React" title="Direct link to React" translate="no">​</a></h3><span class="badge_Ba2I" style="color:#349AD5"><span class="badgeTooltip_cWXP">This item only works when running on the client.</span><span class="badgeToolTipTail_H9D_"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 337 304" fill="#349AD5" role="img" aria-label="This item only works when running on the client."><path d="M0 201h337v36H0v-36zm0 0zM0 0v188h337V0H0zM218 287h30c12 0 12 17 0 17H88c-11 0-11-17 0-17h31l10-39h79l10 39z"></path></svg> <!-- -->Client</span></span><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L418"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">React</code><code>(</code><div class="inset_uKQm"><div><code>message<!-- -->: </code><code class="blue_P4bS">any</code><code>,</code></div><div><code>emoji<!-- -->: </code><code class="blue_P4bS">string</code></div></div><code>) → </code><code>(</code><code>)</code></div><div>
+<p>
+  Toggles the local player's reaction (an emoji) on a message. Accepts a message
+  object or a message id.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="RegisterEmoji"><code style="text-decoration:none">RegisterEmoji</code><a href="#RegisterEmoji" class="hash-link" aria-label="Direct link to RegisterEmoji" title="Direct link to RegisterEmoji" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L430"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">RegisterEmoji</code><code>(</code><div class="inset_uKQm"><div><code>name<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>assetId<!-- -->: </code><code class="blue_P4bS">string</code></div></div><code>) → </code><code>(</code><code>)</code></div><div>
+<p>Registers a custom <code>:name:</code> emoji backed by an image asset id.</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="RegisterSticker"><code style="text-decoration:none">RegisterSticker</code><a href="#RegisterSticker" class="hash-link" aria-label="Direct link to RegisterSticker" title="Direct link to RegisterSticker" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L438"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">RegisterSticker</code><code>(</code><div class="inset_uKQm"><div><code>id<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>assetId<!-- -->: </code><code class="blue_P4bS">string</code></div></div><code>) → </code><code>(</code><code>)</code></div><div>
+<p>Registers a sticker id → asset mapping used by sticker embeds and autocomplete.</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="SearchEmoji"><code style="text-decoration:none">SearchEmoji</code><a href="#SearchEmoji" class="hash-link" aria-label="Direct link to SearchEmoji" title="Direct link to SearchEmoji" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L446"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">SearchEmoji</code><code>(</code><code>query<!-- -->: </code><code class="blue_P4bS">string</code><code>) → </code><code class="purple_ieR2">{</code><code class="blue_P4bS">string</code><code class="purple_ieR2">}</code></div><div>
+<p>Searches built-in + custom emoji by partial name.</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="RegisterCommand"><code style="text-decoration:none">RegisterCommand</code><a href="#RegisterCommand" class="hash-link" aria-label="Direct link to RegisterCommand" title="Direct link to RegisterCommand" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L458"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">RegisterCommand</code><code>(</code><div class="inset_uKQm"><div><code>name<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>spec<!-- -->: </code><code class="blue_P4bS">Types.CommandSpec</code></div></div><code>) → </code><code>(</code><code>)</code></div><div>
+<p>
+  Registers a slash <code>/command</code>. The handler returns a compose payload
+  (<code>{ text, kind?, recipient?, embeds? }</code>) to send, or nothing for a local-only
+  command. Built-ins: <code>/me</code>, <code>/shrug</code>, <code>/clear</code>, <code>/help</code>, <code>/incog</code>.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="RegisterPanel"><code style="text-decoration:none">RegisterPanel</code><a href="#RegisterPanel" class="hash-link" aria-label="Direct link to RegisterPanel" title="Direct link to RegisterPanel" translate="no">​</a></h3><span class="badge_Ba2I" style="color:#349AD5"><span class="badgeTooltip_cWXP">This item only works when running on the client.</span><span class="badgeToolTipTail_H9D_"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 337 304" fill="#349AD5" role="img" aria-label="This item only works when running on the client."><path d="M0 201h337v36H0v-36zm0 0zM0 0v188h337V0H0zM218 287h30c12 0 12 17 0 17H88c-11 0-11-17 0-17h31l10-39h79l10 39z"></path></svg> <!-- -->Client</span></span><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L468"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">RegisterPanel</code><code>(</code><div class="inset_uKQm"><div><code>name<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>fn<!-- -->: </code><code class="purple_ieR2">(</code><div class="inset_uKQm"><code>args<!-- -->: </code><code class="blue_P4bS">any</code><code class="purple_ieR2">,</code></div><div class="inset_uKQm"><code>message<!-- -->: </code><code class="blue_P4bS">any</code><code class="purple_ieR2">,</code></div><div class="inset_uKQm"><code>theme<!-- -->: </code><code class="blue_P4bS">any</code></div><code class="purple_ieR2">)</code><code class="purple_ieR2"> → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="https://developer.roblox.com/en-us/api-reference/class/Frame" target="_blank" rel="noopener noreferrer">Frame<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound" style="color:gray;vertical-align:middle;margin-left:2px"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg></a></code></div></div><code>) → </code><code>(</code><code>)</code></div><div>
+<p>
+  Registers a renderer for a <code>:::name … :::</code> panel fence. <code>fn(args, message, theme)</code>
+  returns a Frame. Unregistered names render a graceful placeholder.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="AddBlockedWords"><code style="text-decoration:none">AddBlockedWords</code><a href="#AddBlockedWords" class="hash-link" aria-label="Direct link to AddBlockedWords" title="Direct link to AddBlockedWords" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L480"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">AddBlockedWords</code><code>(</code><code>words<!-- -->: </code><code class="purple_ieR2">{</code><code class="blue_P4bS">string</code><code class="purple_ieR2">}</code><code class="op_lSLc"> | </code><code class="blue_P4bS">string</code><code>) → </code><code>(</code><code>)</code></div><div>
+<p>
+  Adds words to the local [Advise] blocklist (layered under Roblox's TextService
+  filter). The bulk list is loaded from Proflis; this is for one-off additions.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="AddAllowedWords"><code style="text-decoration:none">AddAllowedWords</code><a href="#AddAllowedWords" class="hash-link" aria-label="Direct link to AddAllowedWords" title="Direct link to AddAllowedWords" translate="no">​</a></h3><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L489"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">AddAllowedWords</code><code>(</code><code>words<!-- -->: </code><code class="purple_ieR2">{</code><code class="blue_P4bS">string</code><code class="purple_ieR2">}</code><code class="op_lSLc"> | </code><code class="blue_P4bS">string</code><code>) → </code><code>(</code><code>)</code></div><div>
+<p>
+  Allow-lists words so a blocked substring inside them is never masked
+  (Scunthorpe-style exceptions), e.g. <code>Bold.AddAllowedWords("assassin")</code>.
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="SetTheme"><code style="text-decoration:none">SetTheme</code><a href="#SetTheme" class="hash-link" aria-label="Direct link to SetTheme" title="Direct link to SetTheme" translate="no">​</a></h3><span class="badge_Ba2I" style="color:#349AD5"><span class="badgeTooltip_cWXP">This item only works when running on the client.</span><span class="badgeToolTipTail_H9D_"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 337 304" fill="#349AD5" role="img" aria-label="This item only works when running on the client."><path d="M0 201h337v36H0v-36zm0 0zM0 0v188h337V0H0zM218 287h30c12 0 12 17 0 17H88c-11 0-11-17 0-17h31l10-39h79l10 39z"></path></svg> <!-- -->Client</span></span><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L505"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">SetTheme</code><code>(</code><code>theme<!-- -->: </code><code class="blue_P4bS">Types.Theme</code><code>) → </code><code>(</code><code>)</code></div><div>
+<p>Merges theme token overrides into the live theme (see also <a href="/BOLD/api/Bold#Theme">Bold.Theme</a> presets).</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="SetDensity"><code style="text-decoration:none">SetDensity</code><a href="#SetDensity" class="hash-link" aria-label="Direct link to SetDensity" title="Direct link to SetDensity" translate="no">​</a></h3><span class="badge_Ba2I" style="color:#349AD5"><span class="badgeTooltip_cWXP">This item only works when running on the client.</span><span class="badgeToolTipTail_H9D_"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 337 304" fill="#349AD5" role="img" aria-label="This item only works when running on the client."><path d="M0 201h337v36H0v-36zm0 0zM0 0v188h337V0H0zM218 287h30c12 0 12 17 0 17H88c-11 0-11-17 0-17h31l10-39h79l10 39z"></path></svg> <!-- -->Client</span></span><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L514"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">SetDensity</code><code>(</code><code>d<!-- -->: </code><code class="blue_P4bS">&quot;compact&quot;</code><code class="op_lSLc"> | </code><code class="blue_P4bS">&quot;cozy&quot;</code><code class="op_lSLc"> | </code><code class="blue_P4bS">&quot;comfortable&quot;</code><code>) → </code><code>(</code><code>)</code></div><div>
+<p>Sets the message row density.</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="FocusInput"><code style="text-decoration:none">FocusInput</code><a href="#FocusInput" class="hash-link" aria-label="Direct link to FocusInput" title="Direct link to FocusInput" translate="no">​</a></h3><span class="badge_Ba2I" style="color:#349AD5"><span class="badgeTooltip_cWXP">This item only works when running on the client.</span><span class="badgeToolTipTail_H9D_"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 337 304" fill="#349AD5" role="img" aria-label="This item only works when running on the client."><path d="M0 201h337v36H0v-36zm0 0zM0 0v188h337V0H0zM218 287h30c12 0 12 17 0 17H88c-11 0-11-17 0-17h31l10-39h79l10 39z"></path></svg> <!-- -->Client</span></span><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L523"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">FocusInput</code><code>(</code><code>) → </code><code>(</code><code>)</code></div><div>
+<p>Focuses the chat input box.</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="SetKindStyle"><code style="text-decoration:none">SetKindStyle</code><a href="#SetKindStyle" class="hash-link" aria-label="Direct link to SetKindStyle" title="Direct link to SetKindStyle" translate="no">​</a></h3><span class="badge_Ba2I" style="color:#349AD5"><span class="badgeTooltip_cWXP">This item only works when running on the client.</span><span class="badgeToolTipTail_H9D_"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 337 304" fill="#349AD5" role="img" aria-label="This item only works when running on the client."><path d="M0 201h337v36H0v-36zm0 0zM0 0v188h337V0H0zM218 287h30c12 0 12 17 0 17H88c-11 0-11-17 0-17h31l10-39h79l10 39z"></path></svg> <!-- -->Client</span></span><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L532"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">SetKindStyle</code><code>(</code><div class="inset_uKQm"><div><code>kind<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>textKey<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>prefix<!-- -->: </code><code class="blue_P4bS">string?</code><code>,</code></div><div><code>bold<!-- -->: </code><code class="blue_P4bS">boolean?</code></div></div><code>) → </code><code>(</code><code>)</code></div><div>
+<p>Restyles a message kind's prefix, text-colour token and bold flag.</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="SetKindOverride"><code style="text-decoration:none">SetKindOverride</code><a href="#SetKindOverride" class="hash-link" aria-label="Direct link to SetKindOverride" title="Direct link to SetKindOverride" translate="no">​</a></h3><span class="badge_Ba2I" style="color:#349AD5"><span class="badgeTooltip_cWXP">This item only works when running on the client.</span><span class="badgeToolTipTail_H9D_"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 337 304" fill="#349AD5" role="img" aria-label="This item only works when running on the client."><path d="M0 201h337v36H0v-36zm0 0zM0 0v188h337V0H0zM218 287h30c12 0 12 17 0 17H88c-11 0-11-17 0-17h31l10-39h79l10 39z"></path></svg> <!-- -->Client</span></span><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L541"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">SetKindOverride</code><code>(</code><div class="inset_uKQm"><div><code>kind<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>bgKey<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>textKey<!-- -->: </code><code class="blue_P4bS">string</code></div></div><code>) → </code><code>(</code><code>)</code></div><div>
+<p>Overrides the background/text theme keys used for a message kind's card.</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="Decorate"><code style="text-decoration:none">Decorate</code><a href="#Decorate" class="hash-link" aria-label="Direct link to Decorate" title="Direct link to Decorate" translate="no">​</a></h3><span class="badge_Ba2I" style="color:#349AD5"><span class="badgeTooltip_cWXP">This item only works when running on the client.</span><span class="badgeToolTipTail_H9D_"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 337 304" fill="#349AD5" role="img" aria-label="This item only works when running on the client."><path d="M0 201h337v36H0v-36zm0 0zM0 0v188h337V0H0zM218 287h30c12 0 12 17 0 17H88c-11 0-11-17 0-17h31l10-39h79l10 39z"></path></svg> <!-- -->Client</span></span><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L551"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">Decorate</code><code>(</code><code>fn<!-- -->: </code><code class="purple_ieR2">(</code><code class="blue_P4bS">any</code><code class="purple_ieR2">)</code><code class="purple_ieR2"> → </code><code class="blue_P4bS">string?</code><code>) → </code><code>(</code><code>)</code></div><div>
+<p>
+  Registers a per-row decorator that appends inline rich text; <code>fn(message)</code>
+  returns a string (or nil to add nothing).
+</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="SetChannelName"><code style="text-decoration:none">SetChannelName</code><a href="#SetChannelName" class="hash-link" aria-label="Direct link to SetChannelName" title="Direct link to SetChannelName" translate="no">​</a></h3><span class="badge_Ba2I" style="color:#349AD5"><span class="badgeTooltip_cWXP">This item only works when running on the client.</span><span class="badgeToolTipTail_H9D_"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 337 304" fill="#349AD5" role="img" aria-label="This item only works when running on the client."><path d="M0 201h337v36H0v-36zm0 0zM0 0v188h337V0H0zM218 287h30c12 0 12 17 0 17H88c-11 0-11-17 0-17h31l10-39h79l10 39z"></path></svg> <!-- -->Client</span></span><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L560"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">SetChannelName</code><code>(</code><code>name<!-- -->: </code><code class="blue_P4bS">string</code><code>) → </code><code>(</code><code>)</code></div><div>
+<p>Sets the header/channel label.</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="Toggle"><code style="text-decoration:none">Toggle</code><a href="#Toggle" class="hash-link" aria-label="Direct link to Toggle" title="Direct link to Toggle" translate="no">​</a></h3><span class="badge_Ba2I" style="color:#349AD5"><span class="badgeTooltip_cWXP">This item only works when running on the client.</span><span class="badgeToolTipTail_H9D_"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 337 304" fill="#349AD5" role="img" aria-label="This item only works when running on the client."><path d="M0 201h337v36H0v-36zm0 0zM0 0v188h337V0H0zM218 287h30c12 0 12 17 0 17H88c-11 0-11-17 0-17h31l10-39h79l10 39z"></path></svg> <!-- -->Client</span></span><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L569"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">Toggle</code><code>(</code><code>visible<!-- -->: </code><code class="blue_P4bS">boolean?</code><code>) → </code><code>(</code><code>)</code></div><div>
+<p>Shows or hides the chat window (or forces a state).</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="Clear"><code style="text-decoration:none">Clear</code><a href="#Clear" class="hash-link" aria-label="Direct link to Clear" title="Direct link to Clear" translate="no">​</a></h3><span class="badge_Ba2I" style="color:#349AD5"><span class="badgeTooltip_cWXP">This item only works when running on the client.</span><span class="badgeToolTipTail_H9D_"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 337 304" fill="#349AD5" role="img" aria-label="This item only works when running on the client."><path d="M0 201h337v36H0v-36zm0 0zM0 0v188h337V0H0zM218 287h30c12 0 12 17 0 17H88c-11 0-11-17 0-17h31l10-39h79l10 39z"></path></svg> <!-- -->Client</span></span><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L578"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">Clear</code><code>(</code><code>) → </code><code>(</code><code>)</code></div><div>
+<p>Clears the local message list.</p>
+</div><div class="divider_rE5g"></div><h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="RegisterRenderer"><code style="text-decoration:none">RegisterRenderer</code><a href="#RegisterRenderer" class="hash-link" aria-label="Direct link to RegisterRenderer" title="Direct link to RegisterRenderer" translate="no">​</a></h3><span class="badge_Ba2I" style="color:#349AD5"><span class="badgeTooltip_cWXP">This item only works when running on the client.</span><span class="badgeToolTipTail_H9D_"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 337 304" fill="#349AD5" role="img" aria-label="This item only works when running on the client."><path d="M0 201h337v36H0v-36zm0 0zM0 0v188h337V0H0zM218 287h30c12 0 12 17 0 17H88c-11 0-11-17 0-17h31l10-39h79l10 39z"></path></svg> <!-- -->Client</span></span><div class="repositoryDetailsContainer_BPdw"><a class="sourceButton_sEho" href="https://github.com/mkl48/BOLD/blob/main/src/init.luau#L588"><div class="sourceButtonText_Vh0m">&lt;/&gt;</div></a></div><div class="memberString_GwaU"><code>Bold<!-- -->.</code><code class="green_DgR4">RegisterRenderer</code><code>(</code><div class="inset_uKQm"><div><code>kind<!-- -->: </code><code class="blue_P4bS">string</code><code>,</code></div><div><code>fn<!-- -->: </code><code class="purple_ieR2">(</code><div class="inset_uKQm"><code class="blue_P4bS">any</code><code class="purple_ieR2">,</code></div><div class="inset_uKQm"><code class="blue_P4bS">any</code></div><code class="purple_ieR2">)</code><code class="purple_ieR2"> → </code><code class="blue_P4bS"><a style="text-decoration:underline;color:inherit" href="https://developer.roblox.com/en-us/api-reference/class/Frame" target="_blank" rel="noopener noreferrer">Frame<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound" style="color:gray;vertical-align:middle;margin-left:2px"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg></a></code></div></div><code>) → </code><code>(</code><code>)</code></div><div>
+<p>
+  Registers a fully custom card renderer for a message kind; <code>fn(message, theme)</code>
+  returns a Frame used instead of the default row.
+</p>
+</div></div></article></div><details><summary>Show raw api</summary><pre style="max-width:100%;white-space:pre-wrap">{
+    &quot;functions&quot;: [
+        {
+            &quot;name&quot;: &quot;Configure&quot;,
+            &quot;desc&quot;: &quot;Deep-merges a [BoldConfig] into the live config. Safe before or after [Bold.Start].\nSections: `interface`, `parsing`, `filter`, `keys`, `animation`, `sounds`.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;config&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;Types.BoldConfig?&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 53,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;Theme&quot;,
+            &quot;desc&quot;: &quot;Applies a built-in theme preset (`dark`, `light`, `midnight`, `neon`). Returns\n`false` if the name is unknown.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;preset&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;boolean\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 65,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;Layout&quot;,
+            &quot;desc&quot;: &quot;Applies a window layout preset (`top_left`, `top_right`, `bottom_left`,\n`bottom_right`, `center`). Returns `false` if the name is unknown.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;preset&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;boolean\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 78,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;Start&quot;,
+            &quot;desc&quot;: &quot;Boots Bold on the current realm. On the server it wires the receive → filter →\nbroadcast pipeline; on the client it builds the UI and input. Accepts an optional\n[BoldConfig] (the same shape [Bold.Configure] takes). Call once per realm.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;config&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;Types.BoldConfig?&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 156,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;Message&quot;,
+            &quot;desc&quot;: &quot;Constructs and sends a message. On the server it broadcasts, or whispers when\n`metadata.recipient_id` is set; on the client it goes through the send pipeline.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;config&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;Types.MessageClass?&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;Types.MessageClass\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 199,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;Compose&quot;,
+            &quot;desc&quot;: &quot;Returns a fluent [Builder] for assembling a message from markdown + embeds, e.g.\n`Bold.Compose():Bold(\&quot;gg\&quot;):Mention(plr):Send()`.&quot;,
+            &quot;params&quot;: [],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;Builder&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 228,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;Dispatch&quot;,
+            &quot;desc&quot;: &quot;Sends a server-originated message without routing through the client SEND channel.\nPass `target` to whisper it to one player.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;config&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;Types.MessageClass?&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;target&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;Player?&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;Types.MessageClass?\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;realm&quot;: [
+                &quot;Server&quot;
+            ],
+            &quot;source&quot;: {
+                &quot;line&quot;: 239,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;Image&quot;,
+            &quot;desc&quot;: &quot;Builds an Image embed for a message&#x27;s `content.embeds`.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;image_id&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;config&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;Types.ImageEmbed?&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;Types.ImageEmbed\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 255,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;Gif&quot;,
+            &quot;desc&quot;: &quot;Builds a Gif (VideoFrame) embed for a message&#x27;s `content.embeds`.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;video_id&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;config&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;{ loop: boolean?, autoplay: boolean?, color: Color3? }?&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;Types.GifEmbed\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 265,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;Sticker&quot;,
+            &quot;desc&quot;: &quot;Builds a Sticker embed for a message&#x27;s `content.embeds`.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;sticker_id&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;config&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;{ size: number?, color: Color3? }?&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;Types.StickerEmbed\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 275,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;RichText&quot;,
+            &quot;desc&quot;: &quot;Builds a RichText embed (title, description, fields) for a message&#x27;s `content.embeds`.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;config&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;Types.RichTextEmbed&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;Types.RichTextEmbed\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 285,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;Action&quot;,
+            &quot;desc&quot;: &quot;Builds an Action (button) embed. Handle clicks via the `EmbedActionFired` event.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;action_id&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;config&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;{\n\ttitle: string?,\n\tbutton_text: string?,\n\tstyle: (\&quot;primary\&quot; | \&quot;danger\&quot; | \&quot;ghost\&quot;)?,\n\tcolor: Color3?,\n\t}?&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;Types.ActionEmbed\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 295,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;On&quot;,
+            &quot;desc&quot;: &quot;Connects to a Bold event by name (`MessageReceived`, `Mentioned`, `ReactionAdded`,\n`LinkClicked`, `ThemeChanged`, …). Returns the connection.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;eventName&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;callback&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;(...any) -&gt; ()&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;RBXScriptConnection\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 313,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;Once&quot;,
+            &quot;desc&quot;: &quot;Like [Bold.On], but auto-disconnects after the first fire.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;eventName&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;callback&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;(...any) -&gt; ()&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;RBXScriptConnection\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 323,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;Hook&quot;,
+            &quot;desc&quot;: &quot;Registers an observational lifecycle hook (`BeforeSend`, `AfterDeliver`,\n`BeforeRender`, …). Fire-and-forget: it can observe but not alter or drop a message.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;hookName&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;fn&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;(...any) -&gt; ()&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 334,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;OnMentioned&quot;,
+            &quot;desc&quot;: &quot;Fires when the local player is @mentioned in a delivered message.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;fn&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;(message: any) -&gt; ()&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;RBXScriptConnection\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;realm&quot;: [
+                &quot;Client&quot;
+            ],
+            &quot;source&quot;: {
+                &quot;line&quot;: 344,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;Guard&quot;,
+            &quot;desc&quot;: &quot;Installs a message guard for the current realm. Return `false` to drop a message\nbefore it is delivered (server) or rendered (client).&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;fn&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;(message: any, player: Player?) -&gt; (boolean?)&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 354,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;Classify&quot;,
+            &quot;desc&quot;: &quot;Sets a message&#x27;s `kind` (and optional tags), firing the relevant events.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;message&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;Types.MessageClass&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;kind&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;tags&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;{ string }?&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;Types.MessageClass\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 368,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;Tag&quot;,
+            &quot;desc&quot;: &quot;Adds one or more tags to a message, de-duplicated.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;message&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;Types.MessageClass&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;...&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;Types.MessageClass\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 380,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;Pin&quot;,
+            &quot;desc&quot;: &quot;Pins a message card (adds the pinned indicator).&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;message&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;Types.MessageClass&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;Types.MessageClass\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 394,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;Unpin&quot;,
+            &quot;desc&quot;: &quot;Unpins a message card.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;message&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;Types.MessageClass&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;Types.MessageClass\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 404,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;React&quot;,
+            &quot;desc&quot;: &quot;Toggles the local player&#x27;s reaction (an emoji) on a message. Accepts a message\nobject or a message id.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;message&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;any&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;emoji&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;realm&quot;: [
+                &quot;Client&quot;
+            ],
+            &quot;source&quot;: {
+                &quot;line&quot;: 418,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;RegisterEmoji&quot;,
+            &quot;desc&quot;: &quot;Registers a custom `:name:` emoji backed by an image asset id.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;name&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;assetId&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 430,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;RegisterSticker&quot;,
+            &quot;desc&quot;: &quot;Registers a sticker id → asset mapping used by sticker embeds and autocomplete.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;id&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;assetId&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 438,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;SearchEmoji&quot;,
+            &quot;desc&quot;: &quot;Searches built-in + custom emoji by partial name.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;query&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                }
+            ],
+            &quot;returns&quot;: [
+                {
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;{ string }\n&quot;
+                }
+            ],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 446,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;RegisterCommand&quot;,
+            &quot;desc&quot;: &quot;Registers a slash `/command`. The handler returns a compose payload\n(`{ text, kind?, recipient?, embeds? }`) to send, or nothing for a local-only\ncommand. Built-ins: `/me`, `/shrug`, `/clear`, `/help`, `/incog`.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;name&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;spec&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;Types.CommandSpec&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 458,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;RegisterPanel&quot;,
+            &quot;desc&quot;: &quot;Registers a renderer for a `:::name … :::` panel fence. `fn(args, message, theme)`\nreturns a Frame. Unregistered names render a graceful placeholder.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;name&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;fn&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;(args: any, message: any, theme: any) -&gt; Frame&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;realm&quot;: [
+                &quot;Client&quot;
+            ],
+            &quot;source&quot;: {
+                &quot;line&quot;: 468,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;AddBlockedWords&quot;,
+            &quot;desc&quot;: &quot;Adds words to the local [Advise] blocklist (layered under Roblox&#x27;s TextService\nfilter). The bulk list is loaded from Proflis; this is for one-off additions.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;words&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;{ string } | string&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 480,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;AddAllowedWords&quot;,
+            &quot;desc&quot;: &quot;Allow-lists words so a blocked substring inside them is never masked\n(Scunthorpe-style exceptions), e.g. `Bold.AddAllowedWords(\&quot;assassin\&quot;)`.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;words&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;{ string } | string&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;source&quot;: {
+                &quot;line&quot;: 489,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;SetTheme&quot;,
+            &quot;desc&quot;: &quot;Merges theme token overrides into the live theme (see also [Bold.Theme] presets).&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;theme&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;Types.Theme&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;realm&quot;: [
+                &quot;Client&quot;
+            ],
+            &quot;source&quot;: {
+                &quot;line&quot;: 505,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;SetDensity&quot;,
+            &quot;desc&quot;: &quot;Sets the message row density.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;d&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;\&quot;compact\&quot; | \&quot;cozy\&quot; | \&quot;comfortable\&quot;&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;realm&quot;: [
+                &quot;Client&quot;
+            ],
+            &quot;source&quot;: {
+                &quot;line&quot;: 514,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;FocusInput&quot;,
+            &quot;desc&quot;: &quot;Focuses the chat input box.&quot;,
+            &quot;params&quot;: [],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;realm&quot;: [
+                &quot;Client&quot;
+            ],
+            &quot;source&quot;: {
+                &quot;line&quot;: 523,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;SetKindStyle&quot;,
+            &quot;desc&quot;: &quot;Restyles a message kind&#x27;s prefix, text-colour token and bold flag.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;kind&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;textKey&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;prefix&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string?&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;bold&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;boolean?&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;realm&quot;: [
+                &quot;Client&quot;
+            ],
+            &quot;source&quot;: {
+                &quot;line&quot;: 532,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;SetKindOverride&quot;,
+            &quot;desc&quot;: &quot;Overrides the background/text theme keys used for a message kind&#x27;s card.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;kind&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;bgKey&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;textKey&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;realm&quot;: [
+                &quot;Client&quot;
+            ],
+            &quot;source&quot;: {
+                &quot;line&quot;: 541,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;Decorate&quot;,
+            &quot;desc&quot;: &quot;Registers a per-row decorator that appends inline rich text; `fn(message)`\nreturns a string (or nil to add nothing).&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;fn&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;(any) -&gt; string?&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;realm&quot;: [
+                &quot;Client&quot;
+            ],
+            &quot;source&quot;: {
+                &quot;line&quot;: 551,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;SetChannelName&quot;,
+            &quot;desc&quot;: &quot;Sets the header/channel label.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;name&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;realm&quot;: [
+                &quot;Client&quot;
+            ],
+            &quot;source&quot;: {
+                &quot;line&quot;: 560,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;Toggle&quot;,
+            &quot;desc&quot;: &quot;Shows or hides the chat window (or forces a state).&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;visible&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;boolean?&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;realm&quot;: [
+                &quot;Client&quot;
+            ],
+            &quot;source&quot;: {
+                &quot;line&quot;: 569,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;Clear&quot;,
+            &quot;desc&quot;: &quot;Clears the local message list.&quot;,
+            &quot;params&quot;: [],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;realm&quot;: [
+                &quot;Client&quot;
+            ],
+            &quot;source&quot;: {
+                &quot;line&quot;: 578,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        },
+        {
+            &quot;name&quot;: &quot;RegisterRenderer&quot;,
+            &quot;desc&quot;: &quot;Registers a fully custom card renderer for a message kind; `fn(message, theme)`\nreturns a Frame used instead of the default row.&quot;,
+            &quot;params&quot;: [
+                {
+                    &quot;name&quot;: &quot;kind&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;string&quot;
+                },
+                {
+                    &quot;name&quot;: &quot;fn&quot;,
+                    &quot;desc&quot;: &quot;&quot;,
+                    &quot;lua_type&quot;: &quot;(any, any) -&gt; Frame&quot;
+                }
+            ],
+            &quot;returns&quot;: [],
+            &quot;function_type&quot;: &quot;static&quot;,
+            &quot;realm&quot;: [
+                &quot;Client&quot;
+            ],
+            &quot;source&quot;: {
+                &quot;line&quot;: 588,
+                &quot;path&quot;: &quot;src/init.luau&quot;
+            }
+        }
+    ],
+    &quot;properties&quot;: [],
+    &quot;types&quot;: [],
+    &quot;name&quot;: &quot;Bold&quot;,
+    &quot;desc&quot;: &quot;The chat library&#x27;s entry point. Require it on both realms and call [Bold.Start].\nEverything tunable flows through [Bold.Configure]; messages go out via\n[Bold.Message] or the fluent [Builder] from [Bold.Compose].&quot;,
+    &quot;source&quot;: {
+        &quot;line&quot;: 35,
+        &quot;path&quot;: &quot;src/init.luau&quot;
+    }
+}</pre></details></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#functions" class="table-of-contents__link toc-highlight">Functions</a><ul><li><a href="#Action" class="table-of-contents__link toc-highlight">.Action</a></li><li><a href="#AddAllowedWords" class="table-of-contents__link toc-highlight">.AddAllowedWords</a></li><li><a href="#AddBlockedWords" class="table-of-contents__link toc-highlight">.AddBlockedWords</a></li><li><a href="#Classify" class="table-of-contents__link toc-highlight">.Classify</a></li><li><a href="#Clear" class="table-of-contents__link toc-highlight">.Clear</a></li><li><a href="#Compose" class="table-of-contents__link toc-highlight">.Compose</a></li><li><a href="#Configure" class="table-of-contents__link toc-highlight">.Configure</a></li><li><a href="#Decorate" class="table-of-contents__link toc-highlight">.Decorate</a></li><li><a href="#Dispatch" class="table-of-contents__link toc-highlight">.Dispatch</a></li><li><a href="#FocusInput" class="table-of-contents__link toc-highlight">.FocusInput</a></li><li><a href="#Gif" class="table-of-contents__link toc-highlight">.Gif</a></li><li><a href="#Guard" class="table-of-contents__link toc-highlight">.Guard</a></li><li><a href="#Hook" class="table-of-contents__link toc-highlight">.Hook</a></li><li><a href="#Image" class="table-of-contents__link toc-highlight">.Image</a></li><li><a href="#Layout" class="table-of-contents__link toc-highlight">.Layout</a></li><li><a href="#Message" class="table-of-contents__link toc-highlight">.Message</a></li><li><a href="#On" class="table-of-contents__link toc-highlight">.On</a></li><li><a href="#Once" class="table-of-contents__link toc-highlight">.Once</a></li><li><a href="#OnMentioned" class="table-of-contents__link toc-highlight">.OnMentioned</a></li><li><a href="#Pin" class="table-of-contents__link toc-highlight">.Pin</a></li><li><a href="#React" class="table-of-contents__link toc-highlight">.React</a></li><li><a href="#RegisterCommand" class="table-of-contents__link toc-highlight">.RegisterCommand</a></li><li><a href="#RegisterEmoji" class="table-of-contents__link toc-highlight">.RegisterEmoji</a></li><li><a href="#RegisterPanel" class="table-of-contents__link toc-highlight">.RegisterPanel</a></li><li><a href="#RegisterRenderer" class="table-of-contents__link toc-highlight">.RegisterRenderer</a></li><li><a href="#RegisterSticker" class="table-of-contents__link toc-highlight">.RegisterSticker</a></li><li><a href="#RichText" class="table-of-contents__link toc-highlight">.RichText</a></li><li><a href="#SearchEmoji" class="table-of-contents__link toc-highlight">.SearchEmoji</a></li><li><a href="#SetChannelName" class="table-of-contents__link toc-highlight">.SetChannelName</a></li><li><a href="#SetDensity" class="table-of-contents__link toc-highlight">.SetDensity</a></li><li><a href="#SetKindOverride" class="table-of-contents__link toc-highlight">.SetKindOverride</a></li><li><a href="#SetKindStyle" class="table-of-contents__link toc-highlight">.SetKindStyle</a></li><li><a href="#SetTheme" class="table-of-contents__link toc-highlight">.SetTheme</a></li><li><a href="#Start" class="table-of-contents__link toc-highlight">.Start</a></li><li><a href="#Sticker" class="table-of-contents__link toc-highlight">.Sticker</a></li><li><a href="#Tag" class="table-of-contents__link toc-highlight">.Tag</a></li><li><a href="#Theme" class="table-of-contents__link toc-highlight">.Theme</a></li><li><a href="#Toggle" class="table-of-contents__link toc-highlight">.Toggle</a></li><li><a href="#Unpin" class="table-of-contents__link toc-highlight">.Unpin</a></li></ul></li></ul></div></div></div></div></main></div></div><footer class="theme-layout-footer footer footer--dark"><div class="container container-fluid"><div class="footer__bottom text--center"><div class="footer__copyright">Copyright © 2026 mkl48. Built with Moonwave.</div></div></div></footer></div>
+</body>
+</html>

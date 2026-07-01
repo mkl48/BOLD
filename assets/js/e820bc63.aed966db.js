@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkdocs=self.webpackChunkdocs||[]).push([[294],{4410:s=>{s.exports=JSON.parse('{"sourceUrl":"https://github.com/mkl48/BOLD/blob/main","baseUrl":"/BOLD/","classOrder":["Bold","Builder"],"apiCategories":[]}')}}]);
