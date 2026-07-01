@@ -1,0 +1,125 @@
+/* Bold docs theme. Leans on the library's own accent (#6C3EF4) and a clean,
+ * chat-app feel: Inter for body, JetBrains Mono for headings and code. Loaded
+ * after Moonwave's base css, so these win. */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+
+/* ------------------------------------------------------------------ fonts */
+:root {
+  --ifm-font-family-base: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --ifm-font-family-monospace: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --ifm-heading-font-family: "JetBrains Mono", ui-monospace, monospace;
+  --ifm-heading-font-weight: 600;
+  --ifm-font-weight-semibold: 600;
+  --ifm-code-font-size: 90%;
+  --ifm-line-height-base: 1.65;
+}
+
+.navbar__title {
+  font-family: var(--ifm-font-family-monospace);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
+}
+
+/* --------------------------------------------------------- light (day) mode */
+:root {
+  --ifm-color-primary: #6c3ef4;
+  --ifm-color-primary-dark: #5a29ec;
+  --ifm-color-primary-darker: #4f22d8;
+  --ifm-color-primary-darkest: #411cb2;
+  --ifm-color-primary-light: #8158f6;
+  --ifm-color-primary-lighter: #9472f7;
+  --ifm-color-primary-lightest: #b9a2fa;
+
+  --ifm-background-color: #fbfaff;
+  --ifm-background-surface-color: #ffffff;
+  --ifm-navbar-background-color: #ffffffcc;
+  --ifm-code-background: #f1eefb;
+  --ifm-color-emphasis-200: #e8e3f5;
+  --ifm-color-emphasis-300: #d5cceb;
+  --ifm-toc-border-color: #e8e3f5;
+  --docusaurus-highlighted-code-line-bg: #ece7f9;
+}
+
+/* ------------------------------------------------------------ dark mode */
+[data-theme="dark"] {
+  --ifm-color-primary: #9b7bff;
+  --ifm-color-primary-dark: #8560ff;
+  --ifm-color-primary-darker: #7952ff;
+  --ifm-color-primary-darkest: #5a2ef4;
+  --ifm-color-primary-light: #b196ff;
+  --ifm-color-primary-lighter: #bda6ff;
+  --ifm-color-primary-lightest: #dccdff;
+
+  --ifm-background-color: #0f0e17;
+  --ifm-background-surface-color: #16151f;
+  --ifm-navbar-background-color: #0d0c14cc;
+  --ifm-footer-background-color: #0b0a11;
+  --ifm-font-color-base: #e5e2f0;
+  --ifm-heading-color: #f0eefb;
+  --ifm-link-color: #9b7bff;
+
+  --ifm-code-background: #1c1a29;
+  --ifm-pre-background: #0b0a11;
+  --docusaurus-highlighted-code-line-bg: #241f3a;
+
+  --ifm-color-emphasis-100: #16151f;
+  --ifm-color-emphasis-200: #262336;
+  --ifm-color-emphasis-300: #38335099;
+  --ifm-toc-border-color: #262336;
+  --ifm-color-content-secondary: #8a83a8;
+  --ifm-blockquote-color: #b3accd;
+}
+
+.navbar {
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+}
+[data-theme="dark"] .footer {
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.theme-code-block,
+pre[class*="language-"] {
+  border-radius: 8px;
+}
+[data-theme="dark"] .theme-code-block {
+  border: 1px solid var(--ifm-color-emphasis-200);
+}
+
+code {
+  border-radius: 5px;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  padding: 0.1rem 0.35rem;
+}
+[data-theme="dark"] code {
+  color: #c6b2ff;
+}
+
+.menu__link--active,
+.menu__link--active:hover {
+  color: var(--ifm-color-primary);
+  font-weight: 600;
+}
+.table-of-contents__link--active {
+  color: var(--ifm-color-primary);
+}
+
+[data-theme="dark"] .admonition {
+  background-color: #16151f;
+  border-color: var(--ifm-color-emphasis-200);
+}
+
+.hero {
+  --ifm-hero-background-color: var(--ifm-background-color);
+}
+.hero__title {
+  font-family: var(--ifm-font-family-monospace);
+  letter-spacing: -0.03em;
+}

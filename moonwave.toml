@@ -1,0 +1,46 @@
+title = "Bold"
+gitRepoUrl = "https://github.com/mkl48/BOLD"
+gitSourceBranch = "main"
+changelog = true
+# order the API sidebar: the entry point first, then the compose builder
+classOrder = [
+    "Bold",
+    "Builder",
+]
+[docusaurus]
+onBrokenLinks = "warn"
+onBrokenMarkdownLinks = "warn"
+onBrokenAnchors = "warn"
+organizationName = "mkl48"
+projectName = "BOLD"
+url = "https://mkl48.github.io"
+baseUrl = "/BOLD/"
+tagline = "a rich chat & messaging interface for Roblox"
+
+[home]
+enabled = true
+includeReadme = true
+
+[[home.features]]
+title = "Authoritative filtering"
+description = "TextService + a local hard-block backstop deliver instantly; a deferred profanity pass patches the message in place, so a slow service never stalls chat"
+
+[[home.features]]
+title = "Real mentions"
+description = "@names resolve server-side, highlight, flash the mentioned player's card, and fire Bold.OnMentioned"
+
+[[home.features]]
+title = "Custom panels"
+description = "a :::name … ::: fence renders any component you register — polls, stat cards, button groups, anything"
+
+[[home.features]]
+title = "Reactions, replies & slash commands"
+description = "react, quote-reply, and /commands out of the box, including /incog private whispers"
+
+[[home.features]]
+title = "Customize like crazy"
+description = "one Bold.Configure() deep-merge over theme, density, layout, parsing, filter, keys, animation and sounds — plus theme and layout presets"
+
+[footer]
+style = "dark"
+copyright = "Copyright © 2026 mkl48. Built with Moonwave."

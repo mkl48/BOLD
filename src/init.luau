@@ -25,6 +25,13 @@ local Builder    = require(_Classes.Builder)
 local IS_SERVER = RunService:IsServer()
 local _started  = false
 
+--[=[
+	@class Bold
+
+	The chat library's entry point. Require it on both realms and call [Bold.Start].
+	Everything tunable flows through [Bold.Configure]; messages go out via
+	[Bold.Message] or the fluent [Builder] from [Bold.Compose].
+]=]
 local Bold = {}
 
 Bold.Events = Events
@@ -38,6 +45,11 @@ Bold._sink = nil :: ((payload: any) -> ())?
 -- ─── Startup ─────────────────────────────────────────────────────────────────
 
 -- Deep-merge config at any time. Safe before or after Start.
+--[=[
+	@within Bold
+	Deep-merges a [BoldConfig] into the live config. Safe before or after [Bold.Start].
+	Sections: `interface`, `parsing`, `filter`, `keys`, `animation`, `sounds`.
+]=]
 function Bold.Configure(config: Types.BoldConfig?)
 	Config.Apply(config)
 	if not IS_SERVER and Bold._Interface and config and config.interface and config.interface.theme then
@@ -45,6 +57,11 @@ function Bold.Configure(config: Types.BoldConfig?)
 	end
 end
 
+--[=[
+	@within Bold
+	Applies a built-in theme preset (`dark`, `light`, `midnight`, `neon`). Returns
+	`false` if the name is unknown.
+]=]
 function Bold.Theme(preset: string): boolean
 	local ok = Config.ApplyThemePreset(preset)
 	if ok and not IS_SERVER and Bold._Interface then
@@ -53,6 +70,11 @@ function Bold.Theme(preset: string): boolean
 	return ok
 end
 
+--[=[
+	@within Bold
+	Applies a window layout preset (`top_left`, `top_right`, `bottom_left`,
+	`bottom_right`, `center`). Returns `false` if the name is unknown.
+]=]
 function Bold.Layout(preset: string): boolean
 	return Config.ApplyLayoutPreset(preset)
 end
@@ -125,6 +147,12 @@ local function registerBuiltinPanels(Interface)
 	end)
 end
 
+--[=[
+	@within Bold
+	Boots Bold on the current realm. On the server it wires the receive → filter →
+	broadcast pipeline; on the client it builds the UI and input. Accepts an optional
+	[BoldConfig] (the same shape [Bold.Configure] takes). Call once per realm.
+]=]
 function Bold.Start(config: Types.BoldConfig?)
 	if _started then return end
 	_started = true
@@ -163,6 +191,11 @@ end
 -- ─── Messaging ───────────────────────────────────────────────────────────────
 
 -- Construct and send/broadcast a message.
+--[=[
+	@within Bold
+	Constructs and sends a message. On the server it broadcasts, or whispers when
+	`metadata.recipient_id` is set; on the client it goes through the send pipeline.
+]=]
 function Bold.Message(config: Types.MessageClass?): Types.MessageClass
 	local message = MsgPattern.Construct(config)
 
@@ -186,11 +219,23 @@ function Bold.Message(config: Types.MessageClass?): Types.MessageClass
 end
 
 -- Fluent builder: Bold.Compose():Bold("hi"):Mention(plr):Send()
+--[=[
+	@within Bold
+	@return Builder
+	Returns a fluent [Builder] for assembling a message from markdown + embeds, e.g.
+	`Bold.Compose():Bold("gg"):Mention(plr):Send()`.
+]=]
 function Bold.Compose()
 	return Builder.new(Bold._sink)
 end
 
 -- Server-only: dispatch a message without going through the SEND channel.
+--[=[
+	@within Bold
+	@server
+	Sends a server-originated message without routing through the client SEND channel.
+	Pass `target` to whisper it to one player.
+]=]
 function Bold.Dispatch(config: Types.MessageClass?, target: Player?): Types.MessageClass?
 	if not IS_SERVER then
 		warn("[Bold] Bold.Dispatch is server-only")
@@ -203,30 +248,50 @@ end
 
 -- ─── Embeds ──────────────────────────────────────────────────────────────────
 
+--[=[
+	@within Bold
+	Builds an Image embed for a message's `content.embeds`.
+]=]
 function Bold.Image(image_id: string, config: Types.ImageEmbed?): Types.ImageEmbed
 	local e = config and table.clone(config) or {}
 	e.type = "Image"; e.image_id = image_id
 	return e :: any
 end
 
+--[=[
+	@within Bold
+	Builds a Gif (VideoFrame) embed for a message's `content.embeds`.
+]=]
 function Bold.Gif(video_id: string, config: { loop: boolean?, autoplay: boolean?, color: Color3? }?): Types.GifEmbed
 	local e = config and table.clone(config) or {}
 	e.type = "Gif"; e.video_id = video_id
 	return e :: any
 end
 
+--[=[
+	@within Bold
+	Builds a Sticker embed for a message's `content.embeds`.
+]=]
 function Bold.Sticker(sticker_id: string, config: { size: number?, color: Color3? }?): Types.StickerEmbed
 	local e = config and table.clone(config) or {}
 	e.type = "Sticker"; e.sticker_id = sticker_id
 	return e :: any
 end
 
+--[=[
+	@within Bold
+	Builds a RichText embed (title, description, fields) for a message's `content.embeds`.
+]=]
 function Bold.RichText(config: Types.RichTextEmbed): Types.RichTextEmbed
 	local e = table.clone(config)
 	e.type = "RichText"
 	return e :: any
 end
 
+--[=[
+	@within Bold
+	Builds an Action (button) embed. Handle clicks via the `EmbedActionFired` event.
+]=]
 function Bold.Action(action_id: string, config: {
 	title: string?,
 	button_text: string?,
@@ -240,6 +305,11 @@ end
 
 -- ─── Events / Hooks ──────────────────────────────────────────────────────────
 
+--[=[
+	@within Bold
+	Connects to a Bold event by name (`MessageReceived`, `Mentioned`, `ReactionAdded`,
+	`LinkClicked`, `ThemeChanged`, …). Returns the connection.
+]=]
 function Bold.On(eventName: string, callback: (...any) -> ()): RBXScriptConnection
 	local signal = Events[eventName]
 	assert(signal, "[Bold] Unknown event: " .. tostring(eventName))
@@ -252,16 +322,31 @@ function Bold.Once(eventName: string, callback: (...any) -> ()): RBXScriptConnec
 	return signal:Once(callback)
 end
 
+--[=[
+	@within Bold
+	Registers an observational lifecycle hook (`BeforeSend`, `AfterDeliver`,
+	`BeforeRender`, …). Fire-and-forget: it can observe but not alter or drop a message.
+]=]
 function Bold.Hook(hookName: string, fn: (...any) -> ())
 	Hooks:On(hookName, fn)
 end
 
 -- Fires when the local player is @mentioned.
+--[=[
+	@within Bold
+	@client
+	Fires when the local player is @mentioned in a delivered message.
+]=]
 function Bold.OnMentioned(fn: (message: any) -> ()): RBXScriptConnection
 	return Events.Mentioned:Connect(fn)
 end
 
 -- Server / client message guard: return false to drop.
+--[=[
+	@within Bold
+	Installs a message guard for the current realm. Return `false` to drop a message
+	before it is delivered (server) or rendered (client).
+]=]
 function Bold.Guard(fn: (message: any, player: Player?) -> (boolean?))
 	if IS_SERVER then
 		if Bold._Server then Bold._Server.OnMessage = fn end
@@ -272,6 +357,10 @@ end
 
 -- ─── Classification ──────────────────────────────────────────────────────────
 
+--[=[
+	@within Bold
+	Sets a message's `kind` (and optional tags), firing the relevant events.
+]=]
 function Bold.Classify(message: Types.MessageClass, kind: string, tags: { string }?): Types.MessageClass
 	message.kind = kind
 	if tags then message.tags = tags end
@@ -280,6 +369,10 @@ function Bold.Classify(message: Types.MessageClass, kind: string, tags: { string
 	return message
 end
 
+--[=[
+	@within Bold
+	Adds one or more tags to a message, de-duplicated.
+]=]
 function Bold.Tag(message: Types.MessageClass, ...: string): Types.MessageClass
 	local newTags = { ... }
 	if not message.tags then message.tags = {} end
@@ -290,6 +383,10 @@ function Bold.Tag(message: Types.MessageClass, ...: string): Types.MessageClass
 	return message
 end
 
+--[=[
+	@within Bold
+	Pins a message card (adds the pinned indicator).
+]=]
 function Bold.Pin(message: Types.MessageClass): Types.MessageClass
 	message.pinned = true
 	Events.MessagePinned:Fire(message)
@@ -304,6 +401,12 @@ end
 
 -- ─── Reactions ───────────────────────────────────────────────────────────────
 
+--[=[
+	@within Bold
+	@client
+	Toggles the local player's reaction (an emoji) on a message. Accepts a message
+	object or a message id.
+]=]
 function Bold.React(message: any, emoji: string)
 	if IS_SERVER or not Bold._Client then return end
 	local id = type(message) == "table" and message.metadata and message.metadata.id or message
