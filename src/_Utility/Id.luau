@@ -1,3 +1,7 @@
+-- Bold
+-- _Utility/Id
+-- Plinko Labs
+
 local HttpService = game:GetService("HttpService")
 
 local Id = {}

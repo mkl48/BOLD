@@ -1,3 +1,7 @@
+-- Bold
+-- _Patterns/InputFilter
+-- Plinko Labs
+
 local TweenService = game:GetService("TweenService")
 
 local _Patterns = script.Parent

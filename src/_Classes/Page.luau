@@ -1,3 +1,7 @@
+-- Bold
+-- _Classes/Page
+-- Plinko Labs
+
 local InsertService = game:GetService("InsertService")
 
 local _Classes = script.Parent

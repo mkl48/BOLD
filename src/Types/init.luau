@@ -1,4 +1,10 @@
+-- Bold
+-- Types
+-- Plinko Labs
+
 local Types = {}
+
+-- ─── Inline formatting ───────────────────────────────────────────────────────
 
 export type TextFormatting = {
 	font: Enum.Font?,
@@ -11,7 +17,17 @@ export type TextFormatting = {
 	code: boolean?,
 }
 
-export type ElementType = "text" | "mention" | "emoji_unicode" | "emoji_custom" | "code"
+export type ElementType =
+	"text"
+	| "mention"
+	| "emoji_unicode"
+	| "emoji_custom"
+	| "code"
+	| "spoiler"
+	| "color"
+	| "link"
+	| "blockquote"
+	| "panel"
 
 export type Element = {
 	type: ElementType,
@@ -22,8 +38,16 @@ export type Element = {
 		mention_id: number?,
 		emoji_name: string?,
 		emoji_asset: string?,
+		link_url: string?,
+		color: Color3?,
+		-- panel elements
+		panel_name: string?,
+		panel_args: { [string]: any }?,
+		panel_body: string?,
 	}?,
 }
+
+-- ─── Embeds ──────────────────────────────────────────────────────────────────
 
 export type BaseEmbed = {
 	color: Color3?,
@@ -60,7 +84,7 @@ export type RichTextEmbed = BaseEmbed & {
 
 export type ActionEmbed = BaseEmbed & {
 	type: "Action",
-	title: string,
+	title: string?,
 	action_id: string,
 	button_text: string,
 	style: ("primary" | "danger" | "ghost")?,
@@ -68,7 +92,20 @@ export type ActionEmbed = BaseEmbed & {
 
 export type Embed = ImageEmbed | GifEmbed | StickerEmbed | RichTextEmbed | ActionEmbed
 
+-- ─── Message ─────────────────────────────────────────────────────────────────
+
 export type MessageKind = "chat" | "system" | "announcement" | "whisper" | "team" | string
+
+export type ReplyRef = {
+	id: string,
+	author_name: string?,
+	preview: string?,
+}
+
+export type Reaction = {
+	count: number,
+	users: { number },
+}
 
 export type MessageMetadata = {
 	id: string,
@@ -79,6 +116,10 @@ export type MessageMetadata = {
 	author_color: Color3?,
 	recipient_id: number?,
 	channel: string?,
+	-- userIds resolved from @mentions in the (filtered) text, set server-side
+	mentions: { number }?,
+	reply_to: ReplyRef?,
+	edited: boolean?,
 }
 
 export type MessageClass = {
@@ -92,7 +133,11 @@ export type MessageClass = {
 	tags: { string }?,
 	pinned: boolean?,
 	filtered: boolean?,
+	-- emoji -> tally, kept authoritative on the server
+	reactions: { [string]: Reaction }?,
 }
+
+-- ─── Theme ───────────────────────────────────────────────────────────────────
 
 export type Theme = {
 	-- surfaces
@@ -116,9 +161,21 @@ export type Theme = {
 	accent: Color3?,
 	mention_bg: Color3?,
 	mention_text: Color3?,
+	mention_self_bg: Color3?,
 	code_bg: Color3?,
 	code_text: Color3?,
 	link_text: Color3?,
+	spoiler_bg: Color3?,
+	spoiler_text: Color3?,
+	quote_bar: Color3?,
+	quote_text: Color3?,
+	reaction_bg: Color3?,
+	reaction_active: Color3?,
+
+	-- autocomplete popup
+	autocomplete_bg: Color3?,
+	autocomplete_hover: Color3?,
+	autocomplete_border: Color3?,
 
 	-- semantic kinds
 	system_text: Color3?,
@@ -144,12 +201,63 @@ export type Theme = {
 
 export type LayoutDensity = "compact" | "cozy" | "comfortable"
 
+-- ─── Config sections ─────────────────────────────────────────────────────────
+
+export type ParsingConfig = {
+	enabled: boolean?,
+	markdown: boolean?,
+	mentions: boolean?,
+	emoji: boolean?,
+	panels: boolean?,
+	links: boolean?,
+	filter: boolean?,
+}
+
+export type FilterConfig = {
+	enabled: boolean?,
+	-- run PurgoMalum as a deferred, non-blocking refinement after delivery
+	purgomalum: boolean?,
+	-- client-side hard-block backstop at render time
+	client_backstop: boolean?,
+}
+
+export type KeysConfig = {
+	-- KeyCodes; set false to disable a bind entirely
+	focus: (Enum.KeyCode | false)?,
+	toggle: (Enum.KeyCode | false)?,
+	accept: { Enum.KeyCode }?,
+	up: { Enum.KeyCode }?,
+	down: { Enum.KeyCode }?,
+	close: { Enum.KeyCode }?,
+	use_switch: boolean?,
+}
+
+export type AnimationConfig = {
+	enabled: boolean?,
+	in_style: ("slide" | "fade" | "none")?,
+	in_time: number?,
+	stagger: number?,
+	flash_time: number?,
+	reveal_time: number?,
+	smooth_scroll: boolean?,
+}
+
+export type SoundConfig = {
+	enabled: boolean?,
+	message: string?,
+	mention: string?,
+	send: string?,
+	volume: number?,
+}
+
 export type InterfaceConfig = {
 	theme: Theme?,
 	density: LayoutDensity?,
 	window_size: UDim2?,
 	window_position: UDim2?,
 	window_anchor: Vector2?,
+	min_list_height: number?,
+	max_list_height: number?,
 	header_height: number?,
 	input_height: number?,
 	max_messages: number?,
@@ -164,24 +272,36 @@ export type InterfaceConfig = {
 	resizable: boolean?,
 	message_grouping: boolean?,
 	grouping_window: number?,
+	reactions: boolean?,
+	reply_enabled: boolean?,
+	quick_reactions: { string }?,
 }
 
 export type BoldConfig = {
 	interface: InterfaceConfig?,
-	parsing: {
-		enabled: boolean?,
-		markdown: boolean?,
-		mentions: boolean?,
-		emoji: boolean?,
-		filter: boolean?,
-	}?,
+	parsing: ParsingConfig?,
+	filter: FilterConfig?,
+	keys: KeysConfig?,
+	animation: AnimationConfig?,
+	sounds: SoundConfig?,
 }
+
+-- ─── Misc ────────────────────────────────────────────────────────────────────
 
 export type ImageAsset = {
 	Name: string,
 	AssetId: number,
 	AssetVersionId: number,
 	CreatorName: string,
+}
+
+export type CommandSpec = {
+	description: string?,
+	args: string?,
+	-- handler runs on the client; return a compose payload to send, or nil for a
+	-- purely local command. ctx exposes { text, args, raw, interface }.
+	handler: (ctx: any) -> any?,
+	server: boolean?,
 }
 
 return Types

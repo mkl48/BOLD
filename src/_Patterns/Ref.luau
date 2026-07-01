@@ -1,3 +1,7 @@
+-- Bold
+-- _Patterns/Ref
+-- Plinko Labs
+
 local Refrence = {}
 
 function Refrence.Req(mod)

@@ -1,3 +1,7 @@
+-- Bold
+-- _Utility/Hooks
+-- Plinko Labs
+
 local Hooks = { _Registry = {} }
 
 function Hooks:On(eventName: string, callback: (...any) -> ())

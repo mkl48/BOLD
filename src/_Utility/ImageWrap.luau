@@ -1,3 +1,7 @@
+-- Bold
+-- _Utility/ImageWrap
+-- Plinko Labs
+
 local ImageWrap = {}
 ImageWrap.Wrap = {
 	Start = "rbxthumb://type=Asset&id=",

@@ -1,106 +1,196 @@
+-- Bold
+-- init
+-- Plinko Labs
+
 local RunService = game:GetService("RunService")
+local Players    = game:GetService("Players")
 
 local _Main     = script._Main
 local _Patterns = script._Patterns
 local _Utility  = script._Utility
+local _Classes  = script._Classes
 
-local Types   = require(script.Types)
-local Events  = require(_Utility.Events)
-local Hooks   = require(_Utility.Hooks)
-local Network = require(_Main.Network)
+local Types    = require(script.Types)
+local Events   = require(_Utility.Events)
+local Hooks    = require(_Utility.Hooks)
+local Config   = require(_Utility.Config)
+local HardBlock = require(_Utility.HardBlockFilter)
+local Network  = require(_Main.Network)
 
 local MsgPattern = require(_Patterns.Message)
 local Parser     = require(_Patterns.Parser)
+local Commands   = require(_Patterns.Commands)
+local Builder    = require(_Classes.Builder)
 
 local IS_SERVER = RunService:IsServer()
 local _started  = false
 
 local Bold = {}
 
--- Public references
 Bold.Events = Events
 Bold.Hooks  = Hooks
 Bold.Types  = Types
+Bold.Config = Config
+Bold.Commands = Commands
 
--- ─── Startup ───────────────────────────────────────────────────────────────
+Bold._sink = nil :: ((payload: any) -> ())?
+
+-- ─── Startup ─────────────────────────────────────────────────────────────────
+
+-- Deep-merge config at any time. Safe before or after Start.
+function Bold.Configure(config: Types.BoldConfig?)
+	Config.Apply(config)
+	if not IS_SERVER and Bold._Interface and config and config.interface and config.interface.theme then
+		Bold._Interface.SetTheme(config.interface.theme)
+	end
+end
+
+function Bold.Theme(preset: string): boolean
+	local ok = Config.ApplyThemePreset(preset)
+	if ok and not IS_SERVER and Bold._Interface then
+		Bold._Interface.SetTheme(Config.Interface.theme)
+	end
+	return ok
+end
+
+function Bold.Layout(preset: string): boolean
+	return Config.ApplyLayoutPreset(preset)
+end
+
+local function registerBuiltinPanels(Interface)
+	local Skin = require(_Utility.Skin)
+
+	Interface.RegisterPanel("divider", function(args)
+		local frame = Instance.new("Frame")
+		frame.AutomaticSize = Enum.AutomaticSize.Y
+		frame.Size = UDim2.new(1, 0, 0, 0)
+		frame.BackgroundTransparency = 1
+		Skin.pad(frame, 0, 0, 4, 4)
+		local line = Instance.new("Frame")
+		line.Size = UDim2.new(1, 0, 0, 1)
+		line.BackgroundColor3 = Skin.tk("subtext")
+		line.BackgroundTransparency = 0.6
+		line.BorderSizePixel = 0
+		line.Parent = frame
+		if args.label then
+			local lbl = Instance.new("TextLabel")
+			lbl.AutomaticSize = Enum.AutomaticSize.Y
+			lbl.Size = UDim2.new(1, 0, 0, 0)
+			lbl.BackgroundTransparency = 1
+			lbl.Text = tostring(args.label)
+			lbl.Font = Skin.tk("font")
+			lbl.TextSize = Skin.density().text_size - 3
+			lbl.TextColor3 = Skin.tk("subtext")
+			lbl.TextXAlignment = Enum.TextXAlignment.Center
+			lbl.Parent = frame
+		end
+		return frame
+	end)
+
+	Interface.RegisterPanel("note", function(args, _message)
+		local frame = Instance.new("Frame")
+		frame.AutomaticSize = Enum.AutomaticSize.Y
+		frame.Size = UDim2.new(1, 0, 0, 0)
+		frame.BackgroundColor3 = Skin.tk("accent")
+		frame.BackgroundTransparency = 0.85
+		frame.BorderSizePixel = 0
+		Skin.corner(frame, 6)
+		Skin.pad(frame, 8, 8, 6, 6)
+		Skin.list(frame, nil, 2)
+		if args.title then
+			local t = Instance.new("TextLabel")
+			t.AutomaticSize = Enum.AutomaticSize.Y
+			t.Size = UDim2.new(1, 0, 0, 0)
+			t.BackgroundTransparency = 1
+			t.Text = tostring(args.title)
+			t.Font = Skin.tk("font_bold")
+			t.TextSize = Skin.density().text_size
+			t.TextColor3 = Skin.tk("text")
+			t.TextXAlignment = Enum.TextXAlignment.Left
+			t.TextWrapped = true
+			t.Parent = frame
+		end
+		local body = Instance.new("TextLabel")
+		body.AutomaticSize = Enum.AutomaticSize.Y
+		body.Size = UDim2.new(1, 0, 0, 0)
+		body.BackgroundTransparency = 1
+		body.Text = args._positional and args._positional[1] or (args.text and tostring(args.text)) or ""
+		body.Font = Skin.tk("font")
+		body.TextSize = Skin.density().text_size - 1
+		body.TextColor3 = Skin.tk("subtext")
+		body.TextXAlignment = Enum.TextXAlignment.Left
+		body.TextWrapped = true
+		body.Parent = frame
+		return frame
+	end)
+end
 
 function Bold.Start(config: Types.BoldConfig?)
 	if _started then return end
 	_started = true
 
+	Config.Apply(config)
 	Network.Start()
 	Events.Start()
-
-	if config and config.parsing then
-		MsgPattern.SetParseOptions(config.parsing)
-	end
 
 	if IS_SERVER then
 		local Server = require(_Main.Server)
 		Bold._Server = Server
-
-		if config then
-			if config.interface == nil then
-				-- server-side: no interface config needed
-			end
+		Bold._sink = function(payload)
+			Bold.Message({
+				content  = { raw_text = payload.text, embeds = payload.embeds },
+				kind     = payload.kind,
+				tags     = payload.tags,
+				pinned   = payload.pinned,
+				metadata = { recipient_id = payload.recipient_id, reply_to = payload.reply_to } :: any,
+			})
 		end
-
-		Server.FilterEnabled = (config and config.parsing and config.parsing.filter) ~= false
 		Server.Start()
 	else
 		local Client    = require(_Main.Client)
 		local Interface = require(_Main.Interface)
-
 		Bold._Client    = Client
 		Bold._Interface = Interface
 
-		if config and config.interface then
-			local ic = config.interface
-			if ic.theme           then Interface.SetTheme(ic.theme) end
-			if ic.density         then Interface.Config.density        = ic.density end
-			if ic.window_size     then Interface.Config.window_size    = ic.window_size end
-			if ic.window_position then Interface.Config.window_pos     = ic.window_position end
-			if ic.window_anchor   then Interface.Config.window_anchor  = ic.window_anchor end
-			if ic.header_height   then Interface.Config.header_height  = ic.header_height end
-			if ic.input_height    then Interface.Config.input_height   = ic.input_height end
-			if ic.max_messages    then Interface.Config.max_messages   = ic.max_messages end
-			if ic.channel_name    then Interface.Config.channel_name   = ic.channel_name end
-			if ic.show_header     ~= nil then Interface.Config.show_header     = ic.show_header end
-			if ic.show_input      ~= nil then Interface.Config.show_input      = ic.show_input end
-			if ic.show_timestamps ~= nil then Interface.Config.show_timestamps = ic.show_timestamps end
-			if ic.show_scrollbar  ~= nil then Interface.Config.show_scrollbar  = ic.show_scrollbar end
-			if ic.visible         ~= nil then Interface.Config.visible         = ic.visible end
-			if ic.animate_in      ~= nil then Interface.Config.animate_in      = ic.animate_in end
-			if ic.message_grouping ~= nil then Interface.Config.message_grouping = ic.message_grouping end
-			if ic.grouping_window then Interface.Config.grouping_window = ic.grouping_window end
-		end
+		Interface.SetReactHandler(Client.React)
+		registerBuiltinPanels(Interface)
 
+		Bold._sink = function(payload) Client.Send(payload) end
 		Client.Start()
 	end
 end
 
--- ─── Messaging ─────────────────────────────────────────────────────────────
+-- ─── Messaging ───────────────────────────────────────────────────────────────
 
--- Construct and send/broadcast a message
+-- Construct and send/broadcast a message.
 function Bold.Message(config: Types.MessageClass?): Types.MessageClass
 	local message = MsgPattern.Construct(config)
 
 	if IS_SERVER then
 		local recipientId = message.metadata and message.metadata.recipient_id
-		if recipientId then
-			local target = game:GetService("Players"):GetPlayerByUserId(recipientId)
-			if target then Bold._Server.SendTo(message, target) end
-		else
-			Bold._Server.Broadcast(message)
-		end
+		local target = recipientId and Players:GetPlayerByUserId(recipientId) or nil
+		Bold._Server.Dispatch(message, target)
 	else
-		Bold._Client.Send(message)
+		Bold._Client.Send({
+			text = message.content.raw_text,
+			embeds = message.content.embeds,
+			kind = message.kind,
+			tags = message.tags,
+			pinned = message.pinned,
+			recipient_id = message.metadata.recipient_id,
+			reply_to = message.metadata.reply_to,
+		})
 	end
 
 	return message
 end
 
--- Server-only: dispatch a message without going through the SEND channel
+-- Fluent builder: Bold.Compose():Bold("hi"):Mention(plr):Send()
+function Bold.Compose()
+	return Builder.new(Bold._sink)
+end
+
+-- Server-only: dispatch a message without going through the SEND channel.
 function Bold.Dispatch(config: Types.MessageClass?, target: Player?): Types.MessageClass?
 	if not IS_SERVER then
 		warn("[Bold] Bold.Dispatch is server-only")
@@ -111,26 +201,23 @@ function Bold.Dispatch(config: Types.MessageClass?, target: Player?): Types.Mess
 	return message
 end
 
--- ─── Embeds ────────────────────────────────────────────────────────────────
+-- ─── Embeds ──────────────────────────────────────────────────────────────────
 
 function Bold.Image(image_id: string, config: Types.ImageEmbed?): Types.ImageEmbed
 	local e = config and table.clone(config) or {}
-	e.type     = "Image"
-	e.image_id = image_id
+	e.type = "Image"; e.image_id = image_id
 	return e :: any
 end
 
 function Bold.Gif(video_id: string, config: { loop: boolean?, autoplay: boolean?, color: Color3? }?): Types.GifEmbed
 	local e = config and table.clone(config) or {}
-	e.type     = "Gif"
-	e.video_id = video_id
+	e.type = "Gif"; e.video_id = video_id
 	return e :: any
 end
 
 function Bold.Sticker(sticker_id: string, config: { size: number?, color: Color3? }?): Types.StickerEmbed
 	local e = config and table.clone(config) or {}
-	e.type       = "Sticker"
-	e.sticker_id = sticker_id
+	e.type = "Sticker"; e.sticker_id = sticker_id
 	return e :: any
 end
 
@@ -147,42 +234,44 @@ function Bold.Action(action_id: string, config: {
 	color: Color3?,
 	}?): Types.ActionEmbed
 	local e = config and table.clone(config) or {}
-	e.type      = "Action"
-	e.action_id = action_id
+	e.type = "Action"; e.action_id = action_id
 	return e :: any
 end
 
--- ─── Events ────────────────────────────────────────────────────────────────
+-- ─── Events / Hooks ──────────────────────────────────────────────────────────
 
--- Connect to a Bold event by name
--- Returns the RBXScriptConnection
 function Bold.On(eventName: string, callback: (...any) -> ()): RBXScriptConnection
 	local signal = Events[eventName]
 	assert(signal, "[Bold] Unknown event: " .. tostring(eventName))
 	return signal:Connect(callback)
 end
 
--- One-shot connection -- auto-disconnects after first fire
 function Bold.Once(eventName: string, callback: (...any) -> ()): RBXScriptConnection
 	local signal = Events[eventName]
 	assert(signal, "[Bold] Unknown event: " .. tostring(eventName))
 	return signal:Once(callback)
 end
 
--- ─── Hooks ─────────────────────────────────────────────────────────────────
-
--- Listen on a hook point -- purely observational, fires for every callback
--- registered, in any order, via task.spawn. Can't cancel or alter the message.
--- Available hook names: BeforeSend, AfterSend, BeforeDeliver, AfterDeliver,
--- BeforeRender, AfterRender, BeforeParse, AfterParse.
--- To actually drop a message server-side, use Server.OnMessage instead.
 function Bold.Hook(hookName: string, fn: (...any) -> ())
 	Hooks:On(hookName, fn)
 end
 
--- ─── Classification ────────────────────────────────────────────────────────
+-- Fires when the local player is @mentioned.
+function Bold.OnMentioned(fn: (message: any) -> ()): RBXScriptConnection
+	return Events.Mentioned:Connect(fn)
+end
 
--- Set the kind and optional tags on a message
+-- Server / client message guard: return false to drop.
+function Bold.Guard(fn: (message: any, player: Player?) -> (boolean?))
+	if IS_SERVER then
+		if Bold._Server then Bold._Server.OnMessage = fn end
+	else
+		if Bold._Client then Bold._Client.OnMessage = fn end
+	end
+end
+
+-- ─── Classification ──────────────────────────────────────────────────────────
+
 function Bold.Classify(message: Types.MessageClass, kind: string, tags: { string }?): Types.MessageClass
 	message.kind = kind
 	if tags then message.tags = tags end
@@ -191,20 +280,16 @@ function Bold.Classify(message: Types.MessageClass, kind: string, tags: { string
 	return message
 end
 
--- Add tags to an existing message -- merges with current tags
 function Bold.Tag(message: Types.MessageClass, ...: string): Types.MessageClass
 	local newTags = { ... }
 	if not message.tags then message.tags = {} end
 	for _, t in newTags do
-		if not table.find(message.tags, t) then
-			table.insert(message.tags, t)
-		end
+		if not table.find(message.tags, t) then table.insert(message.tags, t) end
 	end
 	Events.MessageTagged:Fire(message, message.tags)
 	return message
 end
 
--- Pin / unpin a message card
 function Bold.Pin(message: Types.MessageClass): Types.MessageClass
 	message.pinned = true
 	Events.MessagePinned:Fire(message)
@@ -217,81 +302,90 @@ function Bold.Unpin(message: Types.MessageClass): Types.MessageClass
 	return message
 end
 
--- ─── Emoji & Stickers ──────────────────────────────────────────────────────
+-- ─── Reactions ───────────────────────────────────────────────────────────────
 
--- Register a custom emoji -- :name: will resolve to this asset ID
+function Bold.React(message: any, emoji: string)
+	if IS_SERVER or not Bold._Client then return end
+	local id = type(message) == "table" and message.metadata and message.metadata.id or message
+	if type(id) == "string" then Bold._Client.React(id, emoji) end
+end
+
+-- ─── Emoji / Stickers / Commands / Panels ────────────────────────────────────
+
 function Bold.RegisterEmoji(name: string, assetId: string)
 	Parser.RegisterEmoji(name, assetId)
 end
 
--- Register a sticker -- Bold.Sticker(id) will embed this asset
 function Bold.RegisterSticker(id: string, assetId: string)
 	Parser.RegisterSticker(id, assetId)
 end
 
--- Search built-in + custom emoji by partial name
 function Bold.SearchEmoji(query: string): { string }
 	local results = Parser.SearchEmoji(query)
 	Events.EmojiSearched:Fire(query, results)
 	return results
 end
 
--- ─── UI ────────────────────────────────────────────────────────────────────
+function Bold.RegisterCommand(name: string, spec: Types.CommandSpec)
+	Commands.Register(name, spec)
+end
+
+function Bold.RegisterPanel(name: string, fn: (args: any, message: any, theme: any) -> Frame)
+	if IS_SERVER then return end
+	if Bold._Interface then Bold._Interface.RegisterPanel(name, fn) end
+end
+
+-- ─── Filtering ───────────────────────────────────────────────────────────────
+
+function Bold.AddBlockedWords(words: { string } | string)
+	HardBlock.Add(words)
+end
+
+-- ─── UI (client) ─────────────────────────────────────────────────────────────
+
+local function ui(): any?
+	if IS_SERVER then return nil end
+	return Bold._Interface
+end
 
 function Bold.SetTheme(theme: Types.Theme)
-	if IS_SERVER then return end
-	if Bold._Interface then Bold._Interface.SetTheme(theme) end
+	local i = ui(); if i then i.SetTheme(theme) end
 end
 
 function Bold.SetDensity(d: "compact" | "cozy" | "comfortable")
-	if IS_SERVER then return end
-	if Bold._Interface then Bold._Interface.SetDensity(d) end
+	local i = ui(); if i then i.SetDensity(d) end
 end
 
 function Bold.FocusInput()
-	if IS_SERVER then return end
-	if Bold._Interface then Bold._Interface.FocusInput() end
+	local i = ui(); if i then i.FocusInput() end
 end
 
--- Set the text-color key + optional prefix/bold for a kind's default row style
 function Bold.SetKindStyle(kind: string, textKey: string, prefix: string?, bold: boolean?)
-	if IS_SERVER then return end
-	if Bold._Interface then Bold._Interface.SetKindStyle(kind, textKey, prefix, bold) end
+	local i = ui(); if i then i.SetKindStyle(kind, textKey, prefix, bold) end
 end
 
--- Inject extra inline rich-text at the end of every row -- fn(message) -> string?
+function Bold.SetKindOverride(kind: string, bgKey: string, textKey: string)
+	local i = ui(); if i then i.SetKindOverride(kind, bgKey, textKey) end
+end
+
 function Bold.Decorate(fn: (any) -> string?)
-	if IS_SERVER then return end
-	if Bold._Interface then Bold._Interface.RegisterLineDecorator(fn) end
+	local i = ui(); if i then i.RegisterLineDecorator(fn) end
 end
 
 function Bold.SetChannelName(name: string)
-	if IS_SERVER then return end
-	if Bold._Interface then Bold._Interface.SetChannelName(name) end
+	local i = ui(); if i then i.SetChannelName(name) end
 end
 
 function Bold.Toggle(visible: boolean?)
-	if IS_SERVER then return end
-	if Bold._Interface then Bold._Interface.Toggle(visible) end
+	local i = ui(); if i then i.Toggle(visible) end
 end
 
 function Bold.Clear()
-	if IS_SERVER then return end
-	if Bold._Interface then Bold._Interface.Clear() end
+	local i = ui(); if i then i.Clear() end
 end
 
--- Register a fully custom card renderer for a message kind
--- fn(message, theme) must return a Frame
 function Bold.RegisterRenderer(kind: string, fn: (any, any) -> Frame)
-	if IS_SERVER then return end
-	if Bold._Interface then Bold._Interface.RegisterRenderer(kind, fn) end
-end
-
--- Register a kind override for bg/text theme keys
--- e.g. Bold.SetKindOverride("vip", "announcement_bg", "announcement_text")
-function Bold.SetKindOverride(kind: string, bgKey: string, textKey: string)
-	if IS_SERVER then return end
-	if Bold._Interface then Bold._Interface.SetKindOverride(kind, bgKey, textKey) end
+	local i = ui(); if i then i.RegisterRenderer(kind, fn) end
 end
 
 return Bold

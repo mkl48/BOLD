@@ -1,3 +1,7 @@
+-- Bold
+-- _Classes/Message
+-- Plinko Labs
+
 local Types = require(script.Parent.Parent.Types)
 
 local Message = {}

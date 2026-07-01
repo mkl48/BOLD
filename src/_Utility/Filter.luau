@@ -1,73 +1,45 @@
---[[
-	Filter
-
-	Promise-based wrapper around TextService text filtering, with a local
-	case-insensitive hard-block backstop layered on top (see HardBlockFilter).
-
-	Requires the Promise library (https://github.com/evaera/roblox-lua-promise)
-	to be present in your packages folder. Change the require path below to
-	match wherever it lives in your project.
-
-	Usage:
-
-		Filter.BroadcastAsync(text, player):andThen(function(filtered)
-			...
-		end)
-
-		Filter.ForPlayerAsync(text, fromPlayer, toPlayer):andThen(function(filtered)
-			...
-		end)
-]]
+-- Bold
+-- _Utility/Filter
+-- Plinko Labs
 
 --[[
 	Filter
 
-	Promise-based wrapper around TextService text filtering, layered with:
-		1. Roblox's TextService:FilterStringAsync() (primary, authoritative)
-		2. A local case-insensitive hard-block backstop (HardBlockFilter)
-		3. PurgoMalum (https://www.purgomalum.com) as a supplementary
-		   third-party profanity check
+	Layered text filtering, split into a fast path the delivery pipeline waits
+	on, and a deferred path that never blocks delivery:
 
-	PurgoMalum is a free third-party service with no uptime guarantee, so
-	it's treated as fail-open: if the request errors, times out, or the
-	service is down, we keep whatever text the pipeline already had instead
-	of blocking message delivery on it.
+		Fast  : TextService:FilterStringAsync  +  HardBlockFilter   (cached)
+		        -> authoritative, instant; everything renders from this
+		Deferred : PurgoMalum (https://www.purgomalum.com)            (best-effort)
+		        -> runs AFTER the message is already on screen; if it catches
+		           more, the server patches the message in place
 
-	Requires the Promise library (https://github.com/evaera/roblox-lua-promise)
-	to be present in your packages folder. Change the require path below to
-	match wherever it lives in your project.
+	PurgoMalum is a free third-party service with no uptime guarantee, so it is
+	treated as fail-open: any error/timeout returns the text unchanged.
 
-	Usage:
-
-		Filter.BroadcastAsync(text, player):andThen(function(filtered)
-			...
-		end)
-
-		Filter.ForPlayerAsync(text, fromPlayer, toPlayer):andThen(function(filtered)
-			...
-		end)
+	Requires the bundled Promise library.
 ]]
 
 local HttpService = game:GetService("HttpService")
-local TextService = game:GetService("TextService")
-local RunService = game:GetService("RunService")
+local TextService  = game:GetService("TextService")
+local RunService   = game:GetService("RunService")
 
 local IS_SERVER = RunService:IsServer()
 
--- Adjust these paths to match your project structure.
-local Promise = require(script.Parent.Parent._Packages.Promise)
-local hardBlockCheck = require(script.Parent.HardBlockFilter)
+local Promise        = require(script.Parent.Parent._Packages.Promise)
+local HardBlockFilter = require(script.Parent.HardBlockFilter)
 
 local Filter = {}
 
 local _cache: { [string]: string } = {}
-local _cacheOrder: { string } = {} -- tracks insertion order so we can evict oldest entries
+local _cacheOrder: { string } = {}
+local _inflight: { [string]: any } = {} -- key -> Promise, dedupes concurrent identical requests
 local CACHE_LIMIT = 500
 
 local PURGOMALUM_URL = "https://www.purgomalum.com/service/plain"
 
-local function cacheKey(text: string, userId: number): string
-	return tostring(userId) .. "|" .. text
+local function cacheKey(text: string, userId: number, scope: string): string
+	return scope .. "|" .. tostring(userId) .. "|" .. text
 end
 
 local function store(key: string, value: string)
@@ -75,105 +47,92 @@ local function store(key: string, value: string)
 		table.insert(_cacheOrder, key)
 	end
 	_cache[key] = value
-
-	-- Evict oldest entries one at a time until we're back under the limit,
-	-- instead of wiping the whole cache.
 	while #_cacheOrder > CACHE_LIMIT do
-		local oldestKey = table.remove(_cacheOrder, 1)
-		if oldestKey then
-			_cache[oldestKey] = nil
-		end
+		local oldest = table.remove(_cacheOrder, 1)
+		if oldest then _cache[oldest] = nil end
 	end
 end
 
--- Runs text through PurgoMalum. Fails open (returns the input unchanged)
--- on any error, since this is a best-effort supplementary layer, not the
--- source of truth.
-local function purgoMalumCheck(text: string): string
-	if text == "" then
-		return text
-	end
+-- Shared resolver: cache -> in-flight dedupe -> run `producer` (which returns the
+-- filtered string synchronously inside the promise executor).
+local function resolveCached(key: string, producer: (resolve: (string) -> ()) -> ())
+	local cached = _cache[key]
+	if cached then return Promise.resolve(cached) end
 
-	local url = PURGOMALUM_URL .. "?text=" .. HttpService:UrlEncode(text)
+	local pending = _inflight[key]
+	if pending then return pending end
 
-	local ok, response = pcall(function()
-		return HttpService:RequestAsync({
-			Url = url,
-			Method = "GET",
-		})
+	local promise = Promise.new(function(resolve)
+		producer(function(out)
+			store(key, out)
+			_inflight[key] = nil
+			resolve(out)
+		end)
 	end)
-
-	if not ok or not response.Success then
-		-- Don't let a flaky third-party service break filtering --
-		-- fall back to whatever text we already had.
-		return text
-	end
-
-	return response.Body
+	_inflight[key] = promise
+	return promise
 end
 
--- Runs the full layered pipeline: Roblox filter -> hard block -> PurgoMalum.
--- `robloxFilteredText` is the already-Roblox-filtered text (or the raw
--- original if that call failed).
-local function applyLayers(robloxFilteredText: string): string
-	local out = hardBlockCheck.Replace(robloxFilteredText)
-	out = purgoMalumCheck(out)
-	return out
-end
+-- ─── Fast path (blocking, authoritative) ─────────────────────────────────────
 
--- Broadcast filter -- result is appropriate for ALL viewers (e.g. a sign,
--- a server-wide announcement, anything not scoped to a single recipient)
-function Filter.BroadcastAsync(text: string, fromPlayer: Player?)
-	if not IS_SERVER then
-		return Promise.resolve(text)
+-- Broadcast-scoped: result is appropriate for ALL viewers.
+function Filter.Fast(text: string, fromPlayer: Player?)
+	if not IS_SERVER or text == "" then
+		return Promise.resolve(HardBlockFilter.Replace(text))
 	end
 
 	local uid = fromPlayer and fromPlayer.UserId or 0
-	local key = cacheKey(text, uid)
+	local key = cacheKey(text, uid, "broadcast")
 
-	local cached = _cache[key]
-	if cached then
-		return Promise.resolve(cached)
-	end
-
-	return Promise.new(function(resolve)
+	return resolveCached(key, function(resolve)
 		local ok, result = pcall(function()
 			local res = TextService:FilterStringAsync(text, uid)
 			return res:GetNonChatStringForBroadcastAsync()
 		end)
-
 		local robloxFiltered = ok and result or text
-		local out = applyLayers(robloxFiltered)
-		store(key, out)
-		resolve(out)
+		resolve(HardBlockFilter.Replace(robloxFiltered))
 	end)
 end
 
--- Chat filter -- result is appropriate for a specific viewer.
--- GetChatForUserAsync is deprecated; GetNonChatStringForUserAsync is the
--- correct replacement for custom (non-TextChatService) chat pipelines.
-function Filter.ForPlayerAsync(text: string, fromPlayer: Player, toPlayer: Player)
-	if not IS_SERVER then
-		return Promise.resolve(text)
+-- Per-viewer scoped: result is appropriate for `toPlayer` specifically (whispers).
+function Filter.FastForPlayer(text: string, fromPlayer: Player, toPlayer: Player)
+	if not IS_SERVER or text == "" then
+		return Promise.resolve(HardBlockFilter.Replace(text))
 	end
 
-	local key = cacheKey(text, fromPlayer.UserId) .. "|" .. tostring(toPlayer.UserId)
+	local key = cacheKey(text, fromPlayer.UserId, "user:" .. tostring(toPlayer.UserId))
 
-	local cached = _cache[key]
-	if cached then
-		return Promise.resolve(cached)
-	end
-
-	return Promise.new(function(resolve)
+	return resolveCached(key, function(resolve)
 		local ok, result = pcall(function()
 			local res = TextService:FilterStringAsync(text, fromPlayer.UserId)
 			return res:GetNonChatStringForUserAsync(toPlayer.UserId)
 		end)
-
 		local robloxFiltered = ok and result or text
-		local out = applyLayers(robloxFiltered)
-		store(key, out)
-		resolve(out)
+		resolve(HardBlockFilter.Replace(robloxFiltered))
+	end)
+end
+
+-- ─── Deferred path (non-blocking, best-effort) ───────────────────────────────
+
+-- Runs PurgoMalum on already-fast-filtered text. Resolves to the refined text
+-- (or the input unchanged on any failure). Never call this before delivery.
+function Filter.Deferred(text: string)
+	if not IS_SERVER or text == "" then
+		return Promise.resolve(text)
+	end
+
+	local key = cacheKey(text, 0, "purgo")
+
+	return resolveCached(key, function(resolve)
+		local url = PURGOMALUM_URL .. "?text=" .. HttpService:UrlEncode(text)
+		local ok, response = pcall(function()
+			return HttpService:RequestAsync({ Url = url, Method = "GET" })
+		end)
+		if not ok or not response.Success then
+			resolve(text) -- fail open
+			return
+		end
+		resolve(response.Body)
 	end)
 end
 

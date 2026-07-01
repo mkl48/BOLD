@@ -9,3 +9,6 @@ realm = "shared"
 include = ["default.project.json", "wally.toml", "src", "README.md", "LICENSE"]
 
 [dependencies]
+# Bold vendors its runtime deps (Promise, Signal, Substance, Switch) under
+# src/_Packages, matching the rest of the suite. Switch powers the keybinds and
+# is resolved dynamically; Bold falls back to UserInputService if it is missing.

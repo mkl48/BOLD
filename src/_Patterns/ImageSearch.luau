@@ -1,3 +1,7 @@
+-- Bold
+-- _Patterns/ImageSearch
+-- Plinko Labs
+
 local InsertService = game:GetService("InsertService")
 
 local _Patterns = script.Parent
