@@ -14630,8 +14630,6 @@ local LEET: { [string]: string } = {
 	["0"] = "o", ["5"] = "s", ["$"] = "s", ["7"] = "t", ["8"] = "b", ["9"] = "g",
 }
 
-local VOWELS: { [string]: boolean } = { a = true, e = true, i = true, o = true, u = true }
-
 -- optional run of non-word characters allowed between letters of a blocked word
 local INNER_SEP = "[^%w]*"
 
@@ -14650,18 +14648,17 @@ local function escapeLiteral(c: string): string
 	return "%" .. c
 end
 
--- Build the boundary-anchored, separator-tolerant, interior-vowel-optional pattern.
+-- Build the match pattern for a word. Every letter must be present (one-or-more,
+-- so "fuuuck" is caught), separators are tolerated between letters ("f.u.c.k" /
+-- "f u c k"), and the whole thing is anchored on word boundaries. Crucially NO
+-- vowel is optional: that (`[aeiou]?`) is what let benign words like "what" and
+-- "lol" match a blocked word's skeleton. Leet is folded to letters beforehand
+-- (see leetLower), so the letters here are literal.
 local function wordToPattern(word: string): string
 	local n = #word
 	local parts: { string } = { "%f[%w]" } -- must start at a word boundary
 	for i = 1, n do
-		local c = word:sub(i, i)
-		local interior = i > 1 and i < n
-		if interior and VOWELS[c] then
-			table.insert(parts, "[aeiou]?")
-		else
-			table.insert(parts, escapeLiteral(c))
-		end
+		table.insert(parts, escapeLiteral(word:sub(i, i)) .. "+")
 		if i < n then
 			table.insert(parts, INNER_SEP)
 		end
