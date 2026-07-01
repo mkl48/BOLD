@@ -148,7 +148,6 @@ local function buildGui()
 	_container.BackgroundColor3 = tk("background")
 	_container.BackgroundTransparency = cfg.backdrop and tk("background_transparency") or 1
 	_container.BorderSizePixel = 0
-	_container.Active = false -- don't sink clicks meant for game UI behind the panel
 	_container.ScrollBarThickness = cfg.show_scrollbar and 4 or 0
 	_container.ScrollBarImageColor3 = tk("subtext")
 	_container.CanvasSize = UDim2.new(0, 0, 0, 0)

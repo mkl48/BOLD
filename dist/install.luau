@@ -2360,7 +2360,6 @@ local function buildGui()
 	_container.BackgroundColor3 = tk("background")
 	_container.BackgroundTransparency = cfg.backdrop and tk("background_transparency") or 1
 	_container.BorderSizePixel = 0
-	_container.Active = false -- don't sink clicks meant for game UI behind the panel
 	_container.ScrollBarThickness = cfg.show_scrollbar and 4 or 0
 	_container.ScrollBarImageColor3 = tk("subtext")
 	_container.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -3105,8 +3104,8 @@ local function buildReactions(message: any, lo: number): Frame?
 	if not hasAny then return nil end
 
 	local row = Instance.new("Frame")
-	row.AutomaticSize = Enum.AutomaticSize.XY
-	row.Size = UDim2.fromOffset(0, 0)
+	row.AutomaticSize = Enum.AutomaticSize.Y
+	row.Size = UDim2.new(1, 0, 0, 0)
 	row.BackgroundTransparency = 1
 	row.LayoutOrder = lo
 	local l = Skin.list(row, Enum.FillDirection.Horizontal, 4)
@@ -3141,8 +3140,8 @@ end
 
 local function buildTags(message: any, lo: number): Frame
 	local tagRow = Instance.new("Frame")
-	tagRow.AutomaticSize = Enum.AutomaticSize.XY
-	tagRow.Size = UDim2.fromOffset(0, 0)
+	tagRow.AutomaticSize = Enum.AutomaticSize.Y
+	tagRow.Size = UDim2.new(1, 0, 0, 0)
 	tagRow.BackgroundTransparency = 1
 	tagRow.LayoutOrder = lo
 	local l = Skin.list(tagRow, Enum.FillDirection.Horizontal, 4)
@@ -3397,6 +3396,7 @@ local function buildRow(message: any, revealed: boolean, groupedOverride: boolea
 	local hParts = headerParts(message, style, grouped)
 	local headerUsed = false
 	local ctx: InlineCtx = { mentions = {}, links = {}, hasSpoiler = false }
+	local inlineLabels: { TextLabel } = {}
 
 	local function inlineLabel(rich: string)
 		local lbl = Instance.new("TextLabel")
@@ -3413,6 +3413,7 @@ local function buildRow(message: any, revealed: boolean, groupedOverride: boolea
 		lbl.Text = rich
 		lbl.LayoutOrder = lo; lo += 1
 		lbl.Parent = row
+		table.insert(inlineLabels, lbl)
 	end
 
 	for _, block in blocks do
@@ -3469,19 +3470,12 @@ local function buildRow(message: any, revealed: boolean, groupedOverride: boolea
 		end)
 	end
 
-	-- interactive overlay ONLY when there's something to click (spoilers/mentions/
-	-- links); otherwise the row stays a click-through Frame. Interactive children
-	-- below (reactions, reply bar, embed buttons, toolbar) sit above it via ZIndex.
+	-- clickable ONLY when there's something to click (spoilers/mentions/links).
+	-- The hit button lives INSIDE each inline label (not the row's UIListLayout),
+	-- so plain messages stay click-through and interactive ones can't disturb the
+	-- row's automatic sizing.
 	if ctx.hasSpoiler or #ctx.mentions > 0 or #ctx.links > 0 then
-		local hit = Instance.new("TextButton")
-		hit.Name = "Hit"
-		hit.Size = UDim2.new(1, 0, 1, 0)
-		hit.BackgroundTransparency = 1
-		hit.Text = ""
-		hit.AutoButtonColor = false
-		hit.ZIndex = 2
-		hit.Parent = row
-		hit.MouseButton1Click:Connect(function()
+		local function onClick()
 			Events.CardClicked:Fire(message, row)
 			for _, m in ctx.mentions do
 				Events.MentionClicked:Fire(m.mention_id or 0, m.mention_name or "", message)
@@ -3497,7 +3491,18 @@ local function buildRow(message: any, revealed: boolean, groupedOverride: boolea
 					Events.SpoilerRevealed:Fire(message)
 				end
 			end
-		end)
+		end
+		for _, lbl in inlineLabels do
+			local hit = Instance.new("TextButton")
+			hit.Name = "Hit"
+			hit.Size = UDim2.fromScale(1, 1)
+			hit.BackgroundTransparency = 1
+			hit.Text = ""
+			hit.AutoButtonColor = false
+			hit.ZIndex = lbl.ZIndex + 1
+			hit.Parent = lbl
+			hit.MouseButton1Click:Connect(onClick)
+		end
 	end
 
 	if message.tags and #message.tags > 0 then
@@ -3516,24 +3521,13 @@ local function buildRow(message: any, revealed: boolean, groupedOverride: boolea
 
 	buildToolbar(row, message)
 
-	-- self-mention highlight
+	-- self-mention highlight: tint + flash the row's own background (no overlay
+	-- frame, which would otherwise fight the row's automatic sizing)
 	local meta = message.metadata
 	if meta.mentions and LocalPlayer and table.find(meta.mentions, LocalPlayer.UserId) then
-		local accent = Instance.new("Frame")
-		accent.Size = UDim2.new(0, 2, 1, 0)
-		accent.BackgroundColor3 = tk("mention_self_bg")
-		accent.BorderSizePixel = 0
-		accent.ZIndex = 2
-		accent.Parent = row
-		local overlay = Instance.new("Frame")
-		overlay.Size = UDim2.new(1, 0, 1, 0)
-		overlay.BackgroundColor3 = tk("mention_self_bg")
-		overlay.BackgroundTransparency = 1
-		overlay.BorderSizePixel = 0
-		overlay.ZIndex = 1
-		overlay.Parent = row
-		Skin.corner(overlay, 4)
-		Motion.FlashCard(overlay)
+		row.BackgroundColor3 = tk("mention_self_bg")
+		row.BackgroundTransparency = 0.55
+		Motion.tween(row, 0.6, { BackgroundTransparency = 0.88 })
 		Events.Mentioned:Fire(message)
 	end
 
