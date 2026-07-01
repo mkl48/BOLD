@@ -588,7 +588,7 @@ end
 
 -- ─── hover toolbar (react + reply) ───────────────────────────────────────────
 
-local function buildToolbar(row: TextButton, message: any)
+local function buildToolbar(row: GuiObject, message: any)
 	local cfg = Config.Interface
 	if not (cfg.reactions or cfg.reply_enabled) then return end
 
@@ -725,47 +725,55 @@ local function buildRow(message: any, revealed: boolean, groupedOverride: boolea
 	local grouped = if groupedOverride ~= nil then groupedOverride else shouldGroup(message)
 	_lastGrouped = grouped
 
-	-- rows are Frames (Active = false) so plain messages don't sink clicks meant for
-	-- game UI behind the panel; interactive messages get a hit overlay lower down.
-	local row = Instance.new("Frame")
-	row.Name = "Row"
-	row.AutomaticSize = Enum.AutomaticSize.Y
-	row.Size = UDim2.new(1, 0, 0, 0)
-	row.Active = false
-	row.BorderSizePixel = 0
+	-- `outer` is the card: background, hover toolbar and self-mention tint live here.
+	-- The message content lives in the inner `row` (which owns the UIListLayout), so
+	-- the toolbar/overlays never join that layout and shift other messages. `outer`
+	-- is Active = false so plain messages don't sink clicks meant for game UI behind.
+	local outer = Instance.new("Frame")
+	outer.Name = "Row"
+	outer.AutomaticSize = Enum.AutomaticSize.Y
+	outer.Size = UDim2.new(1, 0, 0, 0)
+	outer.Active = false
+	outer.BorderSizePixel = 0
 
 	local bgKey = override and override.bg_key
 	local cardBg = message.background -- optional per-message Color3
 	local carded = false
 	if bgKey then
-		row.BackgroundColor3 = tk(bgKey)
-		row.BackgroundTransparency = 0.75
+		outer.BackgroundColor3 = tk(bgKey)
+		outer.BackgroundTransparency = 0.75
 	elseif cardBg then
-		row.BackgroundColor3 = cardBg
-		row.BackgroundTransparency = message.background_transparency or 0
+		outer.BackgroundColor3 = cardBg
+		outer.BackgroundTransparency = message.background_transparency or 0
 	elseif cfg.message_background then
-		row.BackgroundColor3 = tk("message_bg")
-		row.BackgroundTransparency = tk("message_bg_transparency")
+		outer.BackgroundColor3 = tk("message_bg")
+		outer.BackgroundTransparency = tk("message_bg_transparency")
 		carded = true
 	else
-		row.BackgroundColor3 = Color3.new(0, 0, 0)
-		row.BackgroundTransparency = 1
+		outer.BackgroundColor3 = Color3.new(0, 0, 0)
+		outer.BackgroundTransparency = 1
 	end
-
-	Skin.corner(row, 4)
-	Skin.pad(row, 6, 6, d.row_pad, d.row_pad)
-	Skin.list(row, nil, 2)
+	Skin.corner(outer, 4)
 
 	if carded then
-		row.MouseEnter:Connect(function()
-			row.BackgroundColor3 = tk("message_hover")
-			row.BackgroundTransparency = tk("message_hover_transparency")
+		outer.MouseEnter:Connect(function()
+			outer.BackgroundColor3 = tk("message_hover")
+			outer.BackgroundTransparency = tk("message_hover_transparency")
 		end)
-		row.MouseLeave:Connect(function()
-			row.BackgroundColor3 = tk("message_bg")
-			row.BackgroundTransparency = tk("message_bg_transparency")
+		outer.MouseLeave:Connect(function()
+			outer.BackgroundColor3 = tk("message_bg")
+			outer.BackgroundTransparency = tk("message_bg_transparency")
 		end)
 	end
+
+	local row = Instance.new("Frame")
+	row.Name = "Content"
+	row.AutomaticSize = Enum.AutomaticSize.Y
+	row.Size = UDim2.new(1, 0, 0, 0)
+	row.BackgroundTransparency = 1
+	row.Parent = outer
+	Skin.pad(row, 6, 6, d.row_pad, d.row_pad)
+	Skin.list(row, nil, 2)
 
 	local lo = 0
 
@@ -936,15 +944,15 @@ local function buildRow(message: any, revealed: boolean, groupedOverride: boolea
 	local reactionRow = buildReactions(message, lo)
 	if reactionRow then reactionRow.Parent = row; lo += 1 end
 
-	buildToolbar(row, message)
+	buildToolbar(outer, message)
 
-	-- self-mention highlight: tint + flash the row's own background (no overlay
+	-- self-mention highlight: tint + flash the card's own background (no overlay
 	-- frame, which would otherwise fight the row's automatic sizing)
 	local meta = message.metadata
 	if meta.mentions and LocalPlayer and table.find(meta.mentions, LocalPlayer.UserId) then
-		row.BackgroundColor3 = tk("mention_self_bg")
-		row.BackgroundTransparency = 0.55
-		Motion.tween(row, 0.6, { BackgroundTransparency = 0.88 })
+		outer.BackgroundColor3 = tk("mention_self_bg")
+		outer.BackgroundTransparency = 0.55
+		Motion.tween(outer, 0.6, { BackgroundTransparency = 0.88 })
 		Events.Mentioned:Fire(message)
 	end
 
@@ -953,7 +961,7 @@ local function buildRow(message: any, revealed: boolean, groupedOverride: boolea
 		_lastAuthorTime = meta.timestamp or os.time()
 	end
 
-	return row
+	return outer
 end
 
 -- ─── list management ─────────────────────────────────────────────────────────

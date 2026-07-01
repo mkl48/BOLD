@@ -161,11 +161,20 @@ local function buildGui()
 
 	local function syncWrapperHeight()
 		local content = layout.AbsoluteContentSize.Y
-		-- fully collapse when empty so the panel doesn't sit as a weird tiny box
-		local h = content <= 0 and 0
-			or math.clamp(content + 12, cfg.min_list_height or 0, cfg.max_list_height or 400)
+		if content <= 0 then
+			-- fully collapse when empty so the panel doesn't sit as a weird tiny box
+			listWrapper.Size = UDim2.new(1, 0, 0, 0)
+			_container.Visible = false
+			return
+		end
+		-- grow to fit, but never past the configured max, and never past the
+		-- viewport so the window can't run off-screen. Content beyond this scrolls.
+		local cam = workspace.CurrentCamera
+		local vh = (cam and cam.ViewportSize.Y) or 720
+		local cap = math.min(cfg.max_list_height or 400, math.max(120, vh - 160))
+		local h = math.clamp(content + 12, cfg.min_list_height or 0, cap)
 		listWrapper.Size = UDim2.new(1, 0, 0, h)
-		_container.Visible = content > 0
+		_container.Visible = true
 	end
 	layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(syncWrapperHeight)
 	syncWrapperHeight()
