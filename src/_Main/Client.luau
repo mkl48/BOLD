@@ -13,7 +13,7 @@ local Substance       = require(_Packages.Substance)
 local Events          = require(_Utility.Events)
 local Hooks           = require(_Utility.Hooks)
 local Config          = require(_Utility.Config)
-local HardBlockFilter = require(_Utility.HardBlockFilter)
+local Advise = require(_Utility.Advise)
 local Network         = require(_Main.Network)
 local Interface       = require(_Main.Interface)
 local MsgPattern      = require(_Patterns.Message)
@@ -40,7 +40,7 @@ function Client.Start()
 
 		-- client-side hard-block backstop: filter on our side too, before parse
 		if Config.Filter.client_backstop and message.content and message.content.raw_text then
-			message.content.raw_text = HardBlockFilter.Replace(message.content.raw_text)
+			message.content.raw_text = Advise.Replace(message.content.raw_text)
 		end
 
 		Hooks:Fire("AfterDeliver", message)
@@ -58,7 +58,7 @@ function Client.Start()
 
 		-- patched text is server-authoritative but re-guard locally anyway
 		if payload.Patch.text and Config.Filter.client_backstop then
-			payload.Patch.text = HardBlockFilter.Replace(payload.Patch.text)
+			payload.Patch.text = Advise.Replace(payload.Patch.text)
 		end
 
 		Interface.ApplyUpdate(payload.Id, payload.Patch)
@@ -70,7 +70,7 @@ function Client.Send(payload: any)
 	payload = payload or {}
 	local text = payload.text or ""
 	if Config.Filter.client_backstop then
-		text = HardBlockFilter.Replace(text)
+		text = Advise.Replace(text)
 	end
 
 	local meta: { [string]: any } = {}

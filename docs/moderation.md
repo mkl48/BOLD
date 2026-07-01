@@ -10,7 +10,7 @@ Bold filters in layers, split by whether delivery waits on them.
 
 ```
 fast (blocking, authoritative, cached):
-    Roblox TextService  →  local HardBlockFilter
+    Roblox TextService  →  local Advise backstop
         → sets the delivered text; everything renders from this
 
 deferred (non-blocking, best-effort):
@@ -19,7 +19,7 @@ deferred (non-blocking, best-effort):
           catches more (via an UPDATE channel)
 
 client backstop:
-    HardBlockFilter runs again at render — "filter on our side too"
+    Advise runs again at render — "filter on our side too"
 ```
 
 Because delivery only ever waits on the fast, cached layers, a slow or down third-party service can never stall chat. The deferred pass edits the already-visible message a beat later if needed.
@@ -40,17 +40,24 @@ Bold.Configure({
 
 `purgomalum` uses [purgomalum.com](https://www.purgomalum.com) and is fail-open — any error or timeout leaves the text unchanged. It needs *Allow HTTP Requests* enabled; turn it off if you don't want the dependency.
 
-## The hard-block list
+## Advise & the word list
 
-`HardBlockFilter` is a narrow local backstop layered on top of TextService (not a replacement). It normalizes text before matching — collapsing spacing/punctuation and mapping leetspeak — so `f u c k`, `f.u.c.k` and `5h1t`-style obfuscation are caught, with masking projected back onto the original text.
+`Advise` is the local backstop layered on top of TextService (not a replacement). It normalizes text before matching — collapsing spacing/punctuation, mapping leetspeak, and treating vowels as optional — so `f u c k`, `f.u.c.k`, `f0ck` and even vowel-dropped `fck` are caught, with masking projected back onto the original text. An allow-list handles Scunthorpe-style exceptions.
 
-Extend it at runtime:
+Its blocklist (a few thousand words) is sourced from **Proflis** as JSON *data*, not as string literals in any script — so Roblox's automated moderation never flags Bold's own source for the words it filters. The server fetches the list once over HttpService and relays it to clients through a RemoteFunction.
+
+:::caution Enable HttpService for the full experience
+Proflis fetches the word list over `HttpService:GetAsync`. If HTTP is disabled the local list is simply **empty** and Bold falls back to Roblox's TextService filter alone — everything still works, just with a smaller backstop. Turn on **Game Settings → Security → Allow HTTP Requests** to get the full local filter (and the same is required for the PurgoMalum layer).
+:::
+
+Extend or refine it at runtime:
 
 ```lua
 Bold.AddBlockedWords({ "myword", "anotherone" })
+Bold.AddAllowedWords({ "assassin", "class" })  -- never mask these
 ```
 
-Keep the list narrow: matching is substring-based, so it's only safe for words that never legitimately appear inside other words. TextService remains the authoritative layer.
+Keep additions narrow: matching is substring-based, so it's only safe for words that never legitimately appear inside other words. TextService remains the authoritative layer.
 
 ## Dropping messages
 

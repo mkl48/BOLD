@@ -7,7 +7,7 @@ local TweenService = game:GetService("TweenService")
 local _Patterns = script.Parent
 local _Utility = _Patterns.Parent._Utility
 
-local HardBlockFilter = require(_Utility.HardBlockFilter)
+local Advise = require(_Utility.Advise)
 
 local InputFilter = {}
 
@@ -52,7 +52,7 @@ function InputFilter.Attach(
 	end
 
 	local function update()
-		local flagged = HardBlockFilter.ContainsBlockedWord(textBox.Text)
+		local flagged = Advise.ContainsBlockedWord(textBox.Text)
 		setVisible(flagged)
 	end
 

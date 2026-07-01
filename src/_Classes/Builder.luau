@@ -8,6 +8,24 @@
 
 local Types = require(script.Parent.Parent.Types)
 
+--[=[
+	@class Builder
+
+	A fluent message builder, returned by [Bold.Compose]. It accumulates a text
+	string in Bold's markdown plus structured embeds, then `:Send()`s it.
+
+	Inline text verbs (each appends and returns `self` for chaining): `:Text`,
+	`:Bold`, `:Italic`, `:Underline`, `:Strike`, `:Code`, `:Spoiler`, `:Emoji`,
+	`:Quote`, `:Space`, `:Line`. Colour, links, mentions, panels and embeds have
+	their own methods below.
+
+	```lua
+	Bold.Compose()
+	    :Bold("Round over!"):Line()
+	    :Text("winner "):Mention(winner)
+	    :Send()
+	```
+]=]
 local Builder = {}
 Builder.__index = Builder
 
@@ -48,15 +66,27 @@ function Builder:Emoji(name: string) return push(self, ":" .. name .. ":") end
 function Builder:Space() return push(self, " ") end
 function Builder:Line() return push(self, "\n") end
 
+--[=[
+	@within Builder
+	Appends coloured text. `color` is a Color3 or a name/hex string (`"red"`, `"#ff0000"`).
+]=]
 function Builder:Color(color: Color3 | string, s: string)
 	local spec = typeof(color) == "Color3" and hexOf(color) or tostring(color)
 	return push(self, "{" .. spec .. "|" .. s .. "}")
 end
 
+--[=[
+	@within Builder
+	Appends a clickable link (fires the `LinkClicked` event when tapped).
+]=]
 function Builder:Link(label: string, url: string)
 	return push(self, "[" .. label .. "](" .. url .. ")")
 end
 
+--[=[
+	@within Builder
+	Appends an `@mention` of a player (or a raw name).
+]=]
 function Builder:Mention(playerOrName: Player | string)
 	local name = typeof(playerOrName) == "Instance" and (playerOrName :: Player).Name or tostring(playerOrName)
 	return push(self, "@" .. name .. " ")
@@ -66,6 +96,11 @@ function Builder:Quote(s: string)
 	return push(self, "\n> " .. s .. "\n")
 end
 
+--[=[
+	@within Builder
+	Appends a `:::name … :::` panel fence for a renderer registered with
+	[Bold.RegisterPanel]. `args` become the panel's key/value arguments.
+]=]
 function Builder:Panel(name: string, args: { [string]: any }?, body: string?)
 	local pieces = { ":::" .. name }
 	if args then
@@ -84,6 +119,10 @@ function Builder:Panel(name: string, args: { [string]: any }?, body: string?)
 end
 
 -- embeds
+--[=[
+	@within Builder
+	Attaches an embed (from [Bold.Image], [Bold.Action], etc.).
+]=]
 function Builder:Embed(embed: Types.Embed)
 	table.insert(self._embeds, embed)
 	return self
@@ -104,22 +143,39 @@ function Builder:Sticker(sticker_id: string, config: { size: number?, color: Col
 end
 
 -- metadata
+--[=[
+	@within Builder
+	Sets the message kind (`chat`, `system`, `announcement`, `whisper`, `team`, or your own).
+]=]
 function Builder:Kind(kind: string) self._kind = kind; return self end
 function Builder:Tag(...: string)
 	self._tags = self._tags or {}
 	for _, t in { ... } do table.insert(self._tags, t) end
 	return self
 end
+--[=[
+	@within Builder
+	Marks this message as a reply to another, showing a quoted preview.
+]=]
 function Builder:Reply(message: any)
 	local meta = message.metadata
 	local preview = (message.content and message.content.raw_text) or ""
 	self._reply = { id = meta.id, author_name = meta.author_name, preview = preview:sub(1, 60) }
 	return self
 end
+--[=[
+	@within Builder
+	Whispers the message to a single player (delivered to them and echoed to the sender).
+]=]
 function Builder:To(player: Player) self._recipient = player.UserId; return self end
 function Builder:Pin() self._pinned = true; return self end
 
 -- output
+--[=[
+	@within Builder
+	Returns the assembled `{ text, embeds, kind, tags, reply_to, recipient_id, pinned }`
+	payload without sending it.
+]=]
 function Builder:Payload(): any
 	return {
 		text = table.concat(self._parts),
@@ -132,6 +188,10 @@ function Builder:Payload(): any
 	}
 end
 
+--[=[
+	@within Builder
+	Sends the assembled message through Bold's pipeline.
+]=]
 function Builder:Send()
 	assert(self._sink, "[Bold] this builder has no sink; call Bold.Compose()")
 	self._sink(self:Payload())

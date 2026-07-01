@@ -24,7 +24,7 @@
 
 Roblox's default chat is a black box. Rolling your own means re-solving the same problems every time: filtering that's actually authoritative, mention pings, an input box with autocomplete, markdown, and a theme you can bend. Bold is that layer — one `Start` call on each realm and you have a full messaging UI, with the pipeline built so **the filter governs what renders** and mentions genuinely ping the people they name.
 
-- **Authoritative, fast filtering** — Roblox TextService + a local hard-block backstop deliver instantly; a third profanity pass runs *after* delivery and patches the message in place, so a slow service never stalls chat.
+- **Authoritative, fast filtering** — Roblox TextService + a local word-list backstop (Advise) deliver instantly; a third profanity pass runs *after* delivery and patches the message in place, so a slow service never stalls chat.
 - **Real mentions** — `@Name` resolves server-side, highlights, flashes the mentioned player's card, and fires `Bold.OnMentioned`.
 - **Custom panels** — type a `:::name … :::` fence and Bold renders a registered component (polls, stat cards, buttons — whatever you build).
 - **Markdown that matters** — bold/italic/underline/strike/code, spoilers, `{color|text}`, links, blockquotes, emoji.
@@ -53,6 +53,8 @@ Bold = "kr3ative/bold@0.1.0"
 ```
 
 Bold vendors its own dependencies (Promise, Signal, Substance, Switch), so there is nothing else to install.
+
+> **Recommended: enable HttpService.** Bold's local word-list backstop (Advise) fetches its ~2k-word list over `HttpService`, and the supplementary PurgoMalum filter uses it too. Turn on **Game Settings → Security → Allow HTTP Requests** for the full moderation experience. Without it, Bold falls back to Roblox's TextService filter alone — everything still works, just with a smaller local backstop.
 
 ---
 

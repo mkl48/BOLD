@@ -14,7 +14,7 @@ local Types    = require(script.Types)
 local Events   = require(_Utility.Events)
 local Hooks    = require(_Utility.Hooks)
 local Config   = require(_Utility.Config)
-local HardBlock = require(_Utility.HardBlockFilter)
+local Advise   = require(_Utility.Advise)
 local Network  = require(_Main.Network)
 
 local MsgPattern = require(_Patterns.Message)
@@ -316,6 +316,10 @@ function Bold.On(eventName: string, callback: (...any) -> ()): RBXScriptConnecti
 	return signal:Connect(callback)
 end
 
+--[=[
+	@within Bold
+	Like [Bold.On], but auto-disconnects after the first fire.
+]=]
 function Bold.Once(eventName: string, callback: (...any) -> ()): RBXScriptConnection
 	local signal = Events[eventName]
 	assert(signal, "[Bold] Unknown event: " .. tostring(eventName))
@@ -393,6 +397,10 @@ function Bold.Pin(message: Types.MessageClass): Types.MessageClass
 	return message
 end
 
+--[=[
+	@within Bold
+	Unpins a message card.
+]=]
 function Bold.Unpin(message: Types.MessageClass): Types.MessageClass
 	message.pinned = false
 	Events.MessageUnpinned:Fire(message)
@@ -415,24 +423,48 @@ end
 
 -- ─── Emoji / Stickers / Commands / Panels ────────────────────────────────────
 
+--[=[
+	@within Bold
+	Registers a custom `:name:` emoji backed by an image asset id.
+]=]
 function Bold.RegisterEmoji(name: string, assetId: string)
 	Parser.RegisterEmoji(name, assetId)
 end
 
+--[=[
+	@within Bold
+	Registers a sticker id → asset mapping used by sticker embeds and autocomplete.
+]=]
 function Bold.RegisterSticker(id: string, assetId: string)
 	Parser.RegisterSticker(id, assetId)
 end
 
+--[=[
+	@within Bold
+	Searches built-in + custom emoji by partial name.
+]=]
 function Bold.SearchEmoji(query: string): { string }
 	local results = Parser.SearchEmoji(query)
 	Events.EmojiSearched:Fire(query, results)
 	return results
 end
 
+--[=[
+	@within Bold
+	Registers a slash `/command`. The handler returns a compose payload
+	(`{ text, kind?, recipient?, embeds? }`) to send, or nothing for a local-only
+	command. Built-ins: `/me`, `/shrug`, `/clear`, `/help`, `/incog`.
+]=]
 function Bold.RegisterCommand(name: string, spec: Types.CommandSpec)
 	Commands.Register(name, spec)
 end
 
+--[=[
+	@within Bold
+	@client
+	Registers a renderer for a `:::name … :::` panel fence. `fn(args, message, theme)`
+	returns a Frame. Unregistered names render a graceful placeholder.
+]=]
 function Bold.RegisterPanel(name: string, fn: (args: any, message: any, theme: any) -> Frame)
 	if IS_SERVER then return end
 	if Bold._Interface then Bold._Interface.RegisterPanel(name, fn) end
@@ -440,8 +472,22 @@ end
 
 -- ─── Filtering ───────────────────────────────────────────────────────────────
 
+--[=[
+	@within Bold
+	Adds words to the local [Advise] blocklist (layered under Roblox's TextService
+	filter). The bulk list is loaded from Proflis; this is for one-off additions.
+]=]
 function Bold.AddBlockedWords(words: { string } | string)
-	HardBlock.Add(words)
+	Advise.Add(words)
+end
+
+--[=[
+	@within Bold
+	Allow-lists words so a blocked substring inside them is never masked
+	(Scunthorpe-style exceptions), e.g. `Bold.AddAllowedWords("assassin")`.
+]=]
+function Bold.AddAllowedWords(words: { string } | string)
+	Advise.AddAllowed(words)
 end
 
 -- ─── UI (client) ─────────────────────────────────────────────────────────────
@@ -451,42 +497,94 @@ local function ui(): any?
 	return Bold._Interface
 end
 
+--[=[
+	@within Bold
+	@client
+	Merges theme token overrides into the live theme (see also [Bold.Theme] presets).
+]=]
 function Bold.SetTheme(theme: Types.Theme)
 	local i = ui(); if i then i.SetTheme(theme) end
 end
 
+--[=[
+	@within Bold
+	@client
+	Sets the message row density.
+]=]
 function Bold.SetDensity(d: "compact" | "cozy" | "comfortable")
 	local i = ui(); if i then i.SetDensity(d) end
 end
 
+--[=[
+	@within Bold
+	@client
+	Focuses the chat input box.
+]=]
 function Bold.FocusInput()
 	local i = ui(); if i then i.FocusInput() end
 end
 
+--[=[
+	@within Bold
+	@client
+	Restyles a message kind's prefix, text-colour token and bold flag.
+]=]
 function Bold.SetKindStyle(kind: string, textKey: string, prefix: string?, bold: boolean?)
 	local i = ui(); if i then i.SetKindStyle(kind, textKey, prefix, bold) end
 end
 
+--[=[
+	@within Bold
+	@client
+	Overrides the background/text theme keys used for a message kind's card.
+]=]
 function Bold.SetKindOverride(kind: string, bgKey: string, textKey: string)
 	local i = ui(); if i then i.SetKindOverride(kind, bgKey, textKey) end
 end
 
+--[=[
+	@within Bold
+	@client
+	Registers a per-row decorator that appends inline rich text; `fn(message)`
+	returns a string (or nil to add nothing).
+]=]
 function Bold.Decorate(fn: (any) -> string?)
 	local i = ui(); if i then i.RegisterLineDecorator(fn) end
 end
 
+--[=[
+	@within Bold
+	@client
+	Sets the header/channel label.
+]=]
 function Bold.SetChannelName(name: string)
 	local i = ui(); if i then i.SetChannelName(name) end
 end
 
+--[=[
+	@within Bold
+	@client
+	Shows or hides the chat window (or forces a state).
+]=]
 function Bold.Toggle(visible: boolean?)
 	local i = ui(); if i then i.Toggle(visible) end
 end
 
+--[=[
+	@within Bold
+	@client
+	Clears the local message list.
+]=]
 function Bold.Clear()
 	local i = ui(); if i then i.Clear() end
 end
 
+--[=[
+	@within Bold
+	@client
+	Registers a fully custom card renderer for a message kind; `fn(message, theme)`
+	returns a Frame used instead of the default row.
+]=]
 function Bold.RegisterRenderer(kind: string, fn: (any, any) -> Frame)
 	local i = ui(); if i then i.RegisterRenderer(kind, fn) end
 end

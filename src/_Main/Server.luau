@@ -17,11 +17,16 @@ local Filter    = require(_Utility.Filter)
 local Config    = require(_Utility.Config)
 local Parser    = require(_Patterns.Parser)
 local Network   = require(_Main.Network)
+local Proflis   = require(_Packages.Proflis)
 
 local Server = {}
 
 -- Optional hard gate: return false to drop a message before delivery.
 Server.OnMessage = nil :: ((any, Player?) -> (boolean | nil))?
+
+-- Fetch the profanity word list (HttpService, server-only) and expose it to
+-- clients. Fail-safe: without HTTP the local backstop is simply empty.
+Proflis.Start()
 
 -- ─── Recent-message registry (for reactions + edits) ─────────────────────────
 

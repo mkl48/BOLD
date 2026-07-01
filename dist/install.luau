@@ -53,7 +53,7 @@ local Types    = require(script.Types)
 local Events   = require(_Utility.Events)
 local Hooks    = require(_Utility.Hooks)
 local Config   = require(_Utility.Config)
-local HardBlock = require(_Utility.HardBlockFilter)
+local Advise   = require(_Utility.Advise)
 local Network  = require(_Main.Network)
 
 local MsgPattern = require(_Patterns.Message)
@@ -64,6 +64,13 @@ local Builder    = require(_Classes.Builder)
 local IS_SERVER = RunService:IsServer()
 local _started  = false
 
+--[=[
+	@class Bold
+
+	The chat library's entry point. Require it on both realms and call [Bold.Start].
+	Everything tunable flows through [Bold.Configure]; messages go out via
+	[Bold.Message] or the fluent [Builder] from [Bold.Compose].
+]=]
 local Bold = {}
 
 Bold.Events = Events
@@ -77,6 +84,11 @@ Bold._sink = nil :: ((payload: any) -> ())?
 -- ─── Startup ─────────────────────────────────────────────────────────────────
 
 -- Deep-merge config at any time. Safe before or after Start.
+--[=[
+	@within Bold
+	Deep-merges a [BoldConfig] into the live config. Safe before or after [Bold.Start].
+	Sections: `interface`, `parsing`, `filter`, `keys`, `animation`, `sounds`.
+]=]
 function Bold.Configure(config: Types.BoldConfig?)
 	Config.Apply(config)
 	if not IS_SERVER and Bold._Interface and config and config.interface and config.interface.theme then
@@ -84,6 +96,11 @@ function Bold.Configure(config: Types.BoldConfig?)
 	end
 end
 
+--[=[
+	@within Bold
+	Applies a built-in theme preset (`dark`, `light`, `midnight`, `neon`). Returns
+	`false` if the name is unknown.
+]=]
 function Bold.Theme(preset: string): boolean
 	local ok = Config.ApplyThemePreset(preset)
 	if ok and not IS_SERVER and Bold._Interface then
@@ -92,6 +109,11 @@ function Bold.Theme(preset: string): boolean
 	return ok
 end
 
+--[=[
+	@within Bold
+	Applies a window layout preset (`top_left`, `top_right`, `bottom_left`,
+	`bottom_right`, `center`). Returns `false` if the name is unknown.
+]=]
 function Bold.Layout(preset: string): boolean
 	return Config.ApplyLayoutPreset(preset)
 end
@@ -164,6 +186,12 @@ local function registerBuiltinPanels(Interface)
 	end)
 end
 
+--[=[
+	@within Bold
+	Boots Bold on the current realm. On the server it wires the receive → filter →
+	broadcast pipeline; on the client it builds the UI and input. Accepts an optional
+	[BoldConfig] (the same shape [Bold.Configure] takes). Call once per realm.
+]=]
 function Bold.Start(config: Types.BoldConfig?)
 	if _started then return end
 	_started = true
@@ -202,6 +230,11 @@ end
 -- ─── Messaging ───────────────────────────────────────────────────────────────
 
 -- Construct and send/broadcast a message.
+--[=[
+	@within Bold
+	Constructs and sends a message. On the server it broadcasts, or whispers when
+	`metadata.recipient_id` is set; on the client it goes through the send pipeline.
+]=]
 function Bold.Message(config: Types.MessageClass?): Types.MessageClass
 	local message = MsgPattern.Construct(config)
 
@@ -225,11 +258,23 @@ function Bold.Message(config: Types.MessageClass?): Types.MessageClass
 end
 
 -- Fluent builder: Bold.Compose():Bold("hi"):Mention(plr):Send()
+--[=[
+	@within Bold
+	@return Builder
+	Returns a fluent [Builder] for assembling a message from markdown + embeds, e.g.
+	`Bold.Compose():Bold("gg"):Mention(plr):Send()`.
+]=]
 function Bold.Compose()
 	return Builder.new(Bold._sink)
 end
 
 -- Server-only: dispatch a message without going through the SEND channel.
+--[=[
+	@within Bold
+	@server
+	Sends a server-originated message without routing through the client SEND channel.
+	Pass `target` to whisper it to one player.
+]=]
 function Bold.Dispatch(config: Types.MessageClass?, target: Player?): Types.MessageClass?
 	if not IS_SERVER then
 		warn("[Bold] Bold.Dispatch is server-only")
@@ -242,30 +287,50 @@ end
 
 -- ─── Embeds ──────────────────────────────────────────────────────────────────
 
+--[=[
+	@within Bold
+	Builds an Image embed for a message's `content.embeds`.
+]=]
 function Bold.Image(image_id: string, config: Types.ImageEmbed?): Types.ImageEmbed
 	local e = config and table.clone(config) or {}
 	e.type = "Image"; e.image_id = image_id
 	return e :: any
 end
 
+--[=[
+	@within Bold
+	Builds a Gif (VideoFrame) embed for a message's `content.embeds`.
+]=]
 function Bold.Gif(video_id: string, config: { loop: boolean?, autoplay: boolean?, color: Color3? }?): Types.GifEmbed
 	local e = config and table.clone(config) or {}
 	e.type = "Gif"; e.video_id = video_id
 	return e :: any
 end
 
+--[=[
+	@within Bold
+	Builds a Sticker embed for a message's `content.embeds`.
+]=]
 function Bold.Sticker(sticker_id: string, config: { size: number?, color: Color3? }?): Types.StickerEmbed
 	local e = config and table.clone(config) or {}
 	e.type = "Sticker"; e.sticker_id = sticker_id
 	return e :: any
 end
 
+--[=[
+	@within Bold
+	Builds a RichText embed (title, description, fields) for a message's `content.embeds`.
+]=]
 function Bold.RichText(config: Types.RichTextEmbed): Types.RichTextEmbed
 	local e = table.clone(config)
 	e.type = "RichText"
 	return e :: any
 end
 
+--[=[
+	@within Bold
+	Builds an Action (button) embed. Handle clicks via the `EmbedActionFired` event.
+]=]
 function Bold.Action(action_id: string, config: {
 	title: string?,
 	button_text: string?,
@@ -279,28 +344,52 @@ end
 
 -- ─── Events / Hooks ──────────────────────────────────────────────────────────
 
+--[=[
+	@within Bold
+	Connects to a Bold event by name (`MessageReceived`, `Mentioned`, `ReactionAdded`,
+	`LinkClicked`, `ThemeChanged`, …). Returns the connection.
+]=]
 function Bold.On(eventName: string, callback: (...any) -> ()): RBXScriptConnection
 	local signal = Events[eventName]
 	assert(signal, "[Bold] Unknown event: " .. tostring(eventName))
 	return signal:Connect(callback)
 end
 
+--[=[
+	@within Bold
+	Like [Bold.On], but auto-disconnects after the first fire.
+]=]
 function Bold.Once(eventName: string, callback: (...any) -> ()): RBXScriptConnection
 	local signal = Events[eventName]
 	assert(signal, "[Bold] Unknown event: " .. tostring(eventName))
 	return signal:Once(callback)
 end
 
+--[=[
+	@within Bold
+	Registers an observational lifecycle hook (`BeforeSend`, `AfterDeliver`,
+	`BeforeRender`, …). Fire-and-forget: it can observe but not alter or drop a message.
+]=]
 function Bold.Hook(hookName: string, fn: (...any) -> ())
 	Hooks:On(hookName, fn)
 end
 
 -- Fires when the local player is @mentioned.
+--[=[
+	@within Bold
+	@client
+	Fires when the local player is @mentioned in a delivered message.
+]=]
 function Bold.OnMentioned(fn: (message: any) -> ()): RBXScriptConnection
 	return Events.Mentioned:Connect(fn)
 end
 
 -- Server / client message guard: return false to drop.
+--[=[
+	@within Bold
+	Installs a message guard for the current realm. Return `false` to drop a message
+	before it is delivered (server) or rendered (client).
+]=]
 function Bold.Guard(fn: (message: any, player: Player?) -> (boolean?))
 	if IS_SERVER then
 		if Bold._Server then Bold._Server.OnMessage = fn end
@@ -311,6 +400,10 @@ end
 
 -- ─── Classification ──────────────────────────────────────────────────────────
 
+--[=[
+	@within Bold
+	Sets a message's `kind` (and optional tags), firing the relevant events.
+]=]
 function Bold.Classify(message: Types.MessageClass, kind: string, tags: { string }?): Types.MessageClass
 	message.kind = kind
 	if tags then message.tags = tags end
@@ -319,6 +412,10 @@ function Bold.Classify(message: Types.MessageClass, kind: string, tags: { string
 	return message
 end
 
+--[=[
+	@within Bold
+	Adds one or more tags to a message, de-duplicated.
+]=]
 function Bold.Tag(message: Types.MessageClass, ...: string): Types.MessageClass
 	local newTags = { ... }
 	if not message.tags then message.tags = {} end
@@ -329,12 +426,20 @@ function Bold.Tag(message: Types.MessageClass, ...: string): Types.MessageClass
 	return message
 end
 
+--[=[
+	@within Bold
+	Pins a message card (adds the pinned indicator).
+]=]
 function Bold.Pin(message: Types.MessageClass): Types.MessageClass
 	message.pinned = true
 	Events.MessagePinned:Fire(message)
 	return message
 end
 
+--[=[
+	@within Bold
+	Unpins a message card.
+]=]
 function Bold.Unpin(message: Types.MessageClass): Types.MessageClass
 	message.pinned = false
 	Events.MessageUnpinned:Fire(message)
@@ -343,6 +448,12 @@ end
 
 -- ─── Reactions ───────────────────────────────────────────────────────────────
 
+--[=[
+	@within Bold
+	@client
+	Toggles the local player's reaction (an emoji) on a message. Accepts a message
+	object or a message id.
+]=]
 function Bold.React(message: any, emoji: string)
 	if IS_SERVER or not Bold._Client then return end
 	local id = type(message) == "table" and message.metadata and message.metadata.id or message
@@ -351,24 +462,48 @@ end
 
 -- ─── Emoji / Stickers / Commands / Panels ────────────────────────────────────
 
+--[=[
+	@within Bold
+	Registers a custom `:name:` emoji backed by an image asset id.
+]=]
 function Bold.RegisterEmoji(name: string, assetId: string)
 	Parser.RegisterEmoji(name, assetId)
 end
 
+--[=[
+	@within Bold
+	Registers a sticker id → asset mapping used by sticker embeds and autocomplete.
+]=]
 function Bold.RegisterSticker(id: string, assetId: string)
 	Parser.RegisterSticker(id, assetId)
 end
 
+--[=[
+	@within Bold
+	Searches built-in + custom emoji by partial name.
+]=]
 function Bold.SearchEmoji(query: string): { string }
 	local results = Parser.SearchEmoji(query)
 	Events.EmojiSearched:Fire(query, results)
 	return results
 end
 
+--[=[
+	@within Bold
+	Registers a slash `/command`. The handler returns a compose payload
+	(`{ text, kind?, recipient?, embeds? }`) to send, or nothing for a local-only
+	command. Built-ins: `/me`, `/shrug`, `/clear`, `/help`, `/incog`.
+]=]
 function Bold.RegisterCommand(name: string, spec: Types.CommandSpec)
 	Commands.Register(name, spec)
 end
 
+--[=[
+	@within Bold
+	@client
+	Registers a renderer for a `:::name … :::` panel fence. `fn(args, message, theme)`
+	returns a Frame. Unregistered names render a graceful placeholder.
+]=]
 function Bold.RegisterPanel(name: string, fn: (args: any, message: any, theme: any) -> Frame)
 	if IS_SERVER then return end
 	if Bold._Interface then Bold._Interface.RegisterPanel(name, fn) end
@@ -376,8 +511,22 @@ end
 
 -- ─── Filtering ───────────────────────────────────────────────────────────────
 
+--[=[
+	@within Bold
+	Adds words to the local [Advise] blocklist (layered under Roblox's TextService
+	filter). The bulk list is loaded from Proflis; this is for one-off additions.
+]=]
 function Bold.AddBlockedWords(words: { string } | string)
-	HardBlock.Add(words)
+	Advise.Add(words)
+end
+
+--[=[
+	@within Bold
+	Allow-lists words so a blocked substring inside them is never masked
+	(Scunthorpe-style exceptions), e.g. `Bold.AddAllowedWords("assassin")`.
+]=]
+function Bold.AddAllowedWords(words: { string } | string)
+	Advise.AddAllowed(words)
 end
 
 -- ─── UI (client) ─────────────────────────────────────────────────────────────
@@ -387,42 +536,94 @@ local function ui(): any?
 	return Bold._Interface
 end
 
+--[=[
+	@within Bold
+	@client
+	Merges theme token overrides into the live theme (see also [Bold.Theme] presets).
+]=]
 function Bold.SetTheme(theme: Types.Theme)
 	local i = ui(); if i then i.SetTheme(theme) end
 end
 
+--[=[
+	@within Bold
+	@client
+	Sets the message row density.
+]=]
 function Bold.SetDensity(d: "compact" | "cozy" | "comfortable")
 	local i = ui(); if i then i.SetDensity(d) end
 end
 
+--[=[
+	@within Bold
+	@client
+	Focuses the chat input box.
+]=]
 function Bold.FocusInput()
 	local i = ui(); if i then i.FocusInput() end
 end
 
+--[=[
+	@within Bold
+	@client
+	Restyles a message kind's prefix, text-colour token and bold flag.
+]=]
 function Bold.SetKindStyle(kind: string, textKey: string, prefix: string?, bold: boolean?)
 	local i = ui(); if i then i.SetKindStyle(kind, textKey, prefix, bold) end
 end
 
+--[=[
+	@within Bold
+	@client
+	Overrides the background/text theme keys used for a message kind's card.
+]=]
 function Bold.SetKindOverride(kind: string, bgKey: string, textKey: string)
 	local i = ui(); if i then i.SetKindOverride(kind, bgKey, textKey) end
 end
 
+--[=[
+	@within Bold
+	@client
+	Registers a per-row decorator that appends inline rich text; `fn(message)`
+	returns a string (or nil to add nothing).
+]=]
 function Bold.Decorate(fn: (any) -> string?)
 	local i = ui(); if i then i.RegisterLineDecorator(fn) end
 end
 
+--[=[
+	@within Bold
+	@client
+	Sets the header/channel label.
+]=]
 function Bold.SetChannelName(name: string)
 	local i = ui(); if i then i.SetChannelName(name) end
 end
 
+--[=[
+	@within Bold
+	@client
+	Shows or hides the chat window (or forces a state).
+]=]
 function Bold.Toggle(visible: boolean?)
 	local i = ui(); if i then i.Toggle(visible) end
 end
 
+--[=[
+	@within Bold
+	@client
+	Clears the local message list.
+]=]
 function Bold.Clear()
 	local i = ui(); if i then i.Clear() end
 end
 
+--[=[
+	@within Bold
+	@client
+	Registers a fully custom card renderer for a message kind; `fn(message, theme)`
+	returns a Frame used instead of the default row.
+]=]
 function Bold.RegisterRenderer(kind: string, fn: (any, any) -> Frame)
 	local i = ui(); if i then i.RegisterRenderer(kind, fn) end
 end
@@ -750,6 +951,24 @@ mod("Builder", _3, [[
 
 local Types = require(script.Parent.Parent.Types)
 
+--[=[
+	@class Builder
+
+	A fluent message builder, returned by [Bold.Compose]. It accumulates a text
+	string in Bold's markdown plus structured embeds, then `:Send()`s it.
+
+	Inline text verbs (each appends and returns `self` for chaining): `:Text`,
+	`:Bold`, `:Italic`, `:Underline`, `:Strike`, `:Code`, `:Spoiler`, `:Emoji`,
+	`:Quote`, `:Space`, `:Line`. Colour, links, mentions, panels and embeds have
+	their own methods below.
+
+	```lua
+	Bold.Compose()
+	    :Bold("Round over!"):Line()
+	    :Text("winner "):Mention(winner)
+	    :Send()
+	```
+]=]
 local Builder = {}
 Builder.__index = Builder
 
@@ -790,15 +1009,27 @@ function Builder:Emoji(name: string) return push(self, ":" .. name .. ":") end
 function Builder:Space() return push(self, " ") end
 function Builder:Line() return push(self, "\n") end
 
+--[=[
+	@within Builder
+	Appends coloured text. `color` is a Color3 or a name/hex string (`"red"`, `"#ff0000"`).
+]=]
 function Builder:Color(color: Color3 | string, s: string)
 	local spec = typeof(color) == "Color3" and hexOf(color) or tostring(color)
 	return push(self, "{" .. spec .. "|" .. s .. "}")
 end
 
+--[=[
+	@within Builder
+	Appends a clickable link (fires the `LinkClicked` event when tapped).
+]=]
 function Builder:Link(label: string, url: string)
 	return push(self, "[" .. label .. "](" .. url .. ")")
 end
 
+--[=[
+	@within Builder
+	Appends an `@mention` of a player (or a raw name).
+]=]
 function Builder:Mention(playerOrName: Player | string)
 	local name = typeof(playerOrName) == "Instance" and (playerOrName :: Player).Name or tostring(playerOrName)
 	return push(self, "@" .. name .. " ")
@@ -808,6 +1039,11 @@ function Builder:Quote(s: string)
 	return push(self, "\n> " .. s .. "\n")
 end
 
+--[=[
+	@within Builder
+	Appends a `:::name … :::` panel fence for a renderer registered with
+	[Bold.RegisterPanel]. `args` become the panel's key/value arguments.
+]=]
 function Builder:Panel(name: string, args: { [string]: any }?, body: string?)
 	local pieces = { ":::" .. name }
 	if args then
@@ -826,6 +1062,10 @@ function Builder:Panel(name: string, args: { [string]: any }?, body: string?)
 end
 
 -- embeds
+--[=[
+	@within Builder
+	Attaches an embed (from [Bold.Image], [Bold.Action], etc.).
+]=]
 function Builder:Embed(embed: Types.Embed)
 	table.insert(self._embeds, embed)
 	return self
@@ -846,22 +1086,39 @@ function Builder:Sticker(sticker_id: string, config: { size: number?, color: Col
 end
 
 -- metadata
+--[=[
+	@within Builder
+	Sets the message kind (`chat`, `system`, `announcement`, `whisper`, `team`, or your own).
+]=]
 function Builder:Kind(kind: string) self._kind = kind; return self end
 function Builder:Tag(...: string)
 	self._tags = self._tags or {}
 	for _, t in { ... } do table.insert(self._tags, t) end
 	return self
 end
+--[=[
+	@within Builder
+	Marks this message as a reply to another, showing a quoted preview.
+]=]
 function Builder:Reply(message: any)
 	local meta = message.metadata
 	local preview = (message.content and message.content.raw_text) or ""
 	self._reply = { id = meta.id, author_name = meta.author_name, preview = preview:sub(1, 60) }
 	return self
 end
+--[=[
+	@within Builder
+	Whispers the message to a single player (delivered to them and echoed to the sender).
+]=]
 function Builder:To(player: Player) self._recipient = player.UserId; return self end
 function Builder:Pin() self._pinned = true; return self end
 
 -- output
+--[=[
+	@within Builder
+	Returns the assembled `{ text, embeds, kind, tags, reply_to, recipient_id, pinned }`
+	payload without sending it.
+]=]
 function Builder:Payload(): any
 	return {
 		text = table.concat(self._parts),
@@ -874,6 +1131,10 @@ function Builder:Payload(): any
 	}
 end
 
+--[=[
+	@within Builder
+	Sends the assembled message through Bold's pipeline.
+]=]
 function Builder:Send()
 	assert(self._sink, "[Bold] this builder has no sink; call Bold.Compose()")
 	self._sink(self:Payload())
@@ -1019,7 +1280,7 @@ local Substance       = require(_Packages.Substance)
 local Events          = require(_Utility.Events)
 local Hooks           = require(_Utility.Hooks)
 local Config          = require(_Utility.Config)
-local HardBlockFilter = require(_Utility.HardBlockFilter)
+local Advise = require(_Utility.Advise)
 local Network         = require(_Main.Network)
 local Interface       = require(_Main.Interface)
 local MsgPattern      = require(_Patterns.Message)
@@ -1046,7 +1307,7 @@ function Client.Start()
 
 		-- client-side hard-block backstop: filter on our side too, before parse
 		if Config.Filter.client_backstop and message.content and message.content.raw_text then
-			message.content.raw_text = HardBlockFilter.Replace(message.content.raw_text)
+			message.content.raw_text = Advise.Replace(message.content.raw_text)
 		end
 
 		Hooks:Fire("AfterDeliver", message)
@@ -1064,7 +1325,7 @@ function Client.Start()
 
 		-- patched text is server-authoritative but re-guard locally anyway
 		if payload.Patch.text and Config.Filter.client_backstop then
-			payload.Patch.text = HardBlockFilter.Replace(payload.Patch.text)
+			payload.Patch.text = Advise.Replace(payload.Patch.text)
 		end
 
 		Interface.ApplyUpdate(payload.Id, payload.Patch)
@@ -1076,7 +1337,7 @@ function Client.Send(payload: any)
 	payload = payload or {}
 	local text = payload.text or ""
 	if Config.Filter.client_backstop then
-		text = HardBlockFilter.Replace(text)
+		text = Advise.Replace(text)
 	end
 
 	local meta: { [string]: any } = {}
@@ -2881,11 +3142,16 @@ local Filter    = require(_Utility.Filter)
 local Config    = require(_Utility.Config)
 local Parser    = require(_Patterns.Parser)
 local Network   = require(_Main.Network)
+local Proflis   = require(_Packages.Proflis)
 
 local Server = {}
 
 -- Optional hard gate: return false to drop a message before delivery.
 Server.OnMessage = nil :: ((any, Player?) -> (boolean | nil))?
+
+-- Fetch the profanity word list (HttpService, server-only) and expose it to
+-- clients. Fail-safe: without HTTP the local backstop is simply empty.
+Proflis.Start()
 
 -- ─── Recent-message registry (for reactions + edits) ─────────────────────────
 
@@ -3091,6 +3357,100 @@ end
 return Server
 ]])
 local _5 = folder("_Packages", _1)
+local _6 = mod("Proflis", _5, [[
+-- Bold
+-- _Packages/Proflis
+-- Plinko Labs
+--
+-- Sources the profanity word list for Advise. The list lives as JSON data
+-- (fetched over HttpService), NOT as string literals in any script, so Roblox's
+-- automated moderation never flags Bold's source for the words it filters.
+--
+-- The server fetches the list once and relays it to clients through a
+-- RemoteFunction created here at runtime (so no RemoteFunction instance has to
+-- be committed to source). If HttpService is disabled the list is simply empty
+-- and Bold leans entirely on Roblox's TextService filter -- everything still
+-- works, just with a smaller local backstop. Enabling HTTP is recommended.
+
+local RunService  = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
+
+local _Source = "https://raw.githubusercontent.com/mkl48/BOLD/refs/heads/main/scripts/proflis.json"
+local EVENT_NAME = "Repl_List"
+
+local Proflis = {}
+Proflis._ls = {}
+
+local _started = false
+
+local function resolveEvent(): RemoteFunction?
+	if RunService:IsServer() then
+		local ev = script:FindFirstChild(EVENT_NAME)
+		if not ev then
+			ev = Instance.new("RemoteFunction")
+			ev.Name = EVENT_NAME
+			ev.Parent = script
+		end
+		return ev
+	end
+	return script:WaitForChild(EVENT_NAME, 10) :: RemoteFunction?
+end
+
+-- Server-only: fetch the list and expose it to clients. Safe to call more than once.
+function Proflis.Start()
+	if not RunService:IsServer() or _started then return end
+	_started = true
+
+	local event = resolveEvent()
+	if event then
+		event.OnServerInvoke = function()
+			return Proflis._ls
+		end
+	end
+
+	local ok, body = pcall(function()
+		return HttpService:GetAsync(_Source)
+	end)
+	if not ok then
+		warn(
+			"[Bold.Proflis] Could not fetch the word list over HttpService — the local "
+			.. "backstop will be empty and Bold will rely on Roblox's TextService filter "
+			.. "only. Enable Game Settings → Security → Allow HTTP Requests for the full "
+			.. "experience. (" .. tostring(body) .. ")"
+		)
+		return
+	end
+
+	local ok2, decoded = pcall(function()
+		return HttpService:JSONDecode(body)
+	end)
+	if not ok2 or type(decoded) ~= "table" then
+		warn("[Bold.Proflis] Word list JSON could not be decoded.")
+		return
+	end
+
+	Proflis._ls = decoded
+end
+
+-- Returns the word-list table (map of word -> value). On the client this invokes
+-- the server the first time and returns whatever it has; fail-safe to {}.
+function Proflis.Get(): { [string]: any }
+	if RunService:IsServer() then
+		return Proflis._ls
+	end
+	local event = resolveEvent()
+	if not event then return {} end
+	local ok, list = pcall(function()
+		return event:InvokeServer()
+	end)
+	if ok and type(list) == "table" then
+		return list
+	end
+	return {}
+end
+
+return Proflis
+]])
 mod("Promise", _5, [==[
 --[[
 	An implementation of Promises similar to Promise/A+.
@@ -5257,7 +5617,7 @@ setmetatable(Signal, {
 return Signal
 
 ]])
-local _6 = mod("Substance", _5, [[
+local _7 = mod("Substance", _5, [[
 -- MaterialSubstance
 -- init.lua
 -- Plinko Labs
@@ -5329,7 +5689,7 @@ Substance.Type = Particle.Type
 
 return Substance
 ]])
-local _7 = mod("Async", _6, [[
+local _8 = mod("Async", _7, [[
 -- MaterialSubstance
 -- Async/init.lua
 -- Plinko Labs
@@ -5342,7 +5702,7 @@ return {
 	Branch = Branch,
 }
 ]])
-mod("Branch", _7, [[
+mod("Branch", _8, [[
 -- MaterialSubstance
 -- Async/Branch.lua
 -- Plinko Labs
@@ -5369,7 +5729,7 @@ end
 
 return Branch
 ]])
-mod("Promise", _7, [==[
+mod("Promise", _8, [==[
 --[[
 	An implementation of Promises similar to Promise/A+.
 ]]
@@ -7352,7 +7712,7 @@ function Promise.onUnhandledRejection(callback)
 end
 
 return Promise]==])
-mod("Reaction", _7, [[
+mod("Reaction", _8, [[
 -- MaterialSubstance
 -- Async/Reaction.lua
 -- Plinko Labs
@@ -7499,7 +7859,7 @@ end
 
 return Reaction
 ]])
-local _8 = mod("Particle", _6, [[
+local _9 = mod("Particle", _7, [[
 -- MaterialSubstance
 -- Particle/init.lua
 -- Plinko Labs
@@ -7543,7 +7903,7 @@ end
 
 return Particle
 ]])
-mod("Atom", _8, [[
+mod("Atom", _9, [[
 -- MaterialSubstance
 -- Particle/Atom.lua
 -- Plinko Labs
@@ -7614,7 +7974,7 @@ end
 
 return Atom
 ]])
-mod("Dispatch", _8, [[
+mod("Dispatch", _9, [[
 -- MaterialSubstance
 -- Particle/Dispatch.lua
 -- Plinko Labs
@@ -7821,7 +8181,7 @@ end
 
 return Dispatch
 ]])
-mod("Fossil", _8, [[
+mod("Fossil", _9, [[
 -- MaterialSubstance
 -- Particle/Fossil.lua
 -- Plinko Labs
@@ -7872,7 +8232,7 @@ end
 
 return Fossil
 ]])
-mod("Hooks", _8, [[
+mod("Hooks", _9, [[
 -- MaterialSubstance
 -- Particle/Hooks.lua
 -- Plinko Labs
@@ -7926,7 +8286,7 @@ end
 
 return Hooks
 ]])
-mod("Molecule", _8, [[
+mod("Molecule", _9, [[
 -- MaterialSubstance
 -- Particle/Molecule.lua
 -- Plinko Labs
@@ -7981,7 +8341,7 @@ end
 
 return Molecule
 ]])
-mod("Registry", _8, [[
+mod("Registry", _9, [[
 -- MaterialSubstance
 -- Particle/Registry.lua
 -- Plinko Labs
@@ -8028,7 +8388,7 @@ end
 
 return Registry
 ]])
-mod("Remotes", _8, [[
+mod("Remotes", _9, [[
 -- MaterialSubstance
 -- Particle/Remotes.lua
 -- Plinko Labs
@@ -8091,7 +8451,7 @@ end
 
 return Remotes
 ]])
-mod("Schema", _8, [[
+mod("Schema", _9, [[
 -- MaterialSubstance
 -- Particle/Schema.lua
 -- Plinko Labs
@@ -8178,14 +8538,14 @@ end
 
 return Schema
 ]])
-local _9 = mod("Type", _8, [[
+local _10 = mod("Type", _9, [[
 -- MaterialSubstance
 -- Particle/Type/init.lua
 -- Plinko Labs
 
 return require(script.Constructors)
 ]])
-mod("Constructors", _9, [[
+mod("Constructors", _10, [[
 -- MaterialSubstance
 -- Particle/Type/Constructors.lua
 -- Plinko Labs
@@ -8354,7 +8714,7 @@ end
 
 return Type
 ]])
-mod("TypeDef", _9, [[
+mod("TypeDef", _10, [[
 -- MaterialSubstance
 -- Particle/Type/TypeDef.lua
 -- Plinko Labs
@@ -8871,7 +9231,7 @@ end
 
 return TypeDef
 ]])
-mod("Types", _8, [[
+mod("Types", _9, [[
 -- MaterialSubstance
 -- Particle/Types.lua
 -- Plinko Labs
@@ -8914,7 +9274,7 @@ export type Channel = {
 
 return {}
 ]])
-local _10 = mod("React", _6, [[
+local _11 = mod("React", _7, [[
 -- MaterialSubstance
 -- React/init.lua
 -- Plinko Labs
@@ -8939,7 +9299,7 @@ end
 
 return React
 ]])
-mod("Entangle", _10, [[
+mod("Entangle", _11, [[
 -- MaterialSubstance
 -- React/Entangle.lua
 -- Plinko Labs
@@ -9013,7 +9373,7 @@ end
 
 return Entangle
 ]])
-mod("Flux", _10, [[
+mod("Flux", _11, [[
 -- MaterialSubstance
 -- React/Flux.lua
 -- Plinko Labs
@@ -9119,7 +9479,7 @@ end
 
 return Flux
 ]])
-mod("River", _10, [[
+mod("River", _11, [[
 -- MaterialSubstance
 -- React/River.lua
 -- Plinko Labs
@@ -9183,7 +9543,7 @@ end
 
 return River
 ]])
-local _11 = mod("Tools", _6, [[
+local _12 = mod("Tools", _7, [[
 -- MaterialSubstance
 -- Tools/init.lua
 -- Plinko Labs
@@ -9213,7 +9573,7 @@ end
 
 return Tools
 ]])
-mod("Batch", _11, [[
+mod("Batch", _12, [[
 -- MaterialSubstance
 -- Tools/Batch.lua
 -- Plinko Labs
@@ -9247,7 +9607,7 @@ end
 
 return Batch
 ]])
-mod("Fission", _11, [[
+mod("Fission", _12, [[
 -- MaterialSubstance
 -- Tools/Fission.lua
 -- Plinko Labs
@@ -9279,7 +9639,7 @@ end
 
 return Fission
 ]])
-mod("Fossil", _11, [[
+mod("Fossil", _12, [[
 -- MaterialSubstance
 -- Tools/Fossil.lua
 -- Plinko Labs
@@ -9294,7 +9654,7 @@ return {
 	Clear = ParticleFossil.Clear,
 }
 ]])
-mod("Hooks", _11, [[
+mod("Hooks", _12, [[
 -- MaterialSubstance
 -- Tools/Hooks.lua
 -- Plinko Labs
@@ -9306,7 +9666,7 @@ return {
 	Hook = ParticleHooks.Hook,
 }
 ]])
-mod("LandLine", _11, [[
+mod("LandLine", _12, [[
 -- MaterialSubstance
 -- Tools/LandLine.lua
 -- Plinko Labs
@@ -9352,7 +9712,7 @@ end
 
 return LandLine
 ]])
-local _12 = mod("Switch", _5, [[
+local _13 = mod("Switch", _5, [[
 local Enums    = require(script.Enums)
 local Platform = require(script.Platform)
 local Context  = require(script.Context)
@@ -9443,7 +9803,7 @@ function Switch.OnContextChanged(cb: ({ string }) -> ()): () -> ()
 end
 
 return Switch]])
-mod("Action", _12, [[
+mod("Action", _13, [[
 -- Switch
 -- Action.lua
 -- Plinko Labs
@@ -10175,7 +10535,7 @@ function Action:Destroy()
 end
 
 return Action]])
-mod("Connection", _12, [[
+mod("Connection", _13, [[
 -- Switch
 -- Connection.lua
 -- Plinko Labs
@@ -10279,7 +10639,7 @@ return {
 	Connection = Connection,
 	Promise    = Promise,
 }]])
-mod("Context", _12, [[
+mod("Context", _13, [[
 -- Switch
 -- Context.lua
 -- Plinko Labs
@@ -10455,7 +10815,7 @@ function Context.OnChanged(cb: (stack: { string }) -> ()): () -> ()
 end
 
 return Context]])
-mod("Enums", _12, [[
+mod("Enums", _13, [[
 -- Switch
 -- Enums.lua
 -- Plinko Labs
@@ -10546,7 +10906,7 @@ Enums.Driver = {
 }
 
 return Enums]])
-mod("Platform", _12, [[
+mod("Platform", _13, [[
 -- Switch
 -- Platform.lua
 -- Plinko Labs
@@ -10621,7 +10981,7 @@ function Platform.OnChanged(cb: (new: Platform, prev: Platform) -> ()): () -> ()
 end
 
 return Platform]])
-mod("Promise", _12, [==[
+mod("Promise", _13, [==[
 --[[
 	An implementation of Promises similar to Promise/A+.
 ]]
@@ -12604,7 +12964,7 @@ function Promise.onUnhandledRejection(callback)
 end
 
 return Promise]==])
-mod("Registry", _12, [[
+mod("Registry", _13, [[
 -- Switch
 -- Registry.lua
 -- Plinko Labs
@@ -12740,7 +13100,7 @@ function Registry.All(): { Types.ActionHandle }
 end
 
 return Registry]])
-mod("Types", _12, [[
+mod("Types", _13, [[
 -- Switch
 -- Types.lua
 -- Plinko Labs
@@ -12835,8 +13195,8 @@ export type ActionHandle = {
 }
 
 return {}]])
-local _13 = folder("_Patterns", _1)
-mod("Commands", _13, [[
+local _14 = folder("_Patterns", _1)
+mod("Commands", _14, [[
 -- Bold
 -- _Patterns/Commands
 -- Plinko Labs
@@ -12989,7 +13349,7 @@ Commands.Register("incog", {
 
 return Commands
 ]])
-mod("ImageSearch", _13, [[
+mod("ImageSearch", _14, [[
 -- Bold
 -- _Patterns/ImageSearch
 -- Plinko Labs
@@ -13039,7 +13399,7 @@ function ImageSearch:ForContentsInPage(index: number, callback: (Types.ImageAsse
 end
 
 return ImageSearch]])
-mod("InputFilter", _13, [[
+mod("InputFilter", _14, [[
 -- Bold
 -- _Patterns/InputFilter
 -- Plinko Labs
@@ -13049,7 +13409,7 @@ local TweenService = game:GetService("TweenService")
 local _Patterns = script.Parent
 local _Utility = _Patterns.Parent._Utility
 
-local HardBlockFilter = require(_Utility.HardBlockFilter)
+local Advise = require(_Utility.Advise)
 
 local InputFilter = {}
 
@@ -13094,7 +13454,7 @@ function InputFilter.Attach(
 	end
 
 	local function update()
-		local flagged = HardBlockFilter.ContainsBlockedWord(textBox.Text)
+		local flagged = Advise.ContainsBlockedWord(textBox.Text)
 		setVisible(flagged)
 	end
 
@@ -13114,7 +13474,7 @@ function InputFilter.Attach(
 end
 
 return InputFilter]])
-mod("Message", _13, [[
+mod("Message", _14, [[
 -- Bold
 -- _Patterns/Message
 -- Plinko Labs
@@ -13166,7 +13526,7 @@ end
 
 return Message
 ]])
-mod("Parser", _13, [=[
+mod("Parser", _14, [=[
 -- Bold
 -- _Patterns/Parser
 -- Plinko Labs
@@ -13547,7 +13907,7 @@ end
 
 return Parser
 ]=])
-mod("Ref", _13, [[
+mod("Ref", _14, [[
 -- Bold
 -- _Patterns/Ref
 -- Plinko Labs
@@ -13559,8 +13919,262 @@ function Refrence.Req(mod)
 end
 
 return Refrence]])
-local _14 = folder("_Utility", _1)
-mod("Config", _14, [[
+local _15 = folder("_Utility", _1)
+mod("Advise", _15, [[
+-- Bold
+-- _Utility/Advise
+-- Plinko Labs
+--
+-- Local case-insensitive blocklist backstop layered on top of Roblox's
+-- TextService filter (not a replacement). The blocklist is sourced from Proflis
+-- (fetched over HttpService on the server, relayed to clients) so no profane
+-- string literals live in the scripts themselves. Detection runs over a
+-- *collapsed, normalized* copy of the text -- spacing/punctuation dropped,
+-- digit-leet mapped to letters -- while masking is applied back to the original
+-- via an index map. That catches "f u c k", "f.u.c.k", "f0ck", "fvck", "f*ck",
+-- AND "fck"-style vowel dropping without relying on TextService. Blocked words
+-- match as patterns where vowels are optional (consonants stay literal and
+-- adjacent), so "fuck" also matches "fck" without opening matches on unrelated
+-- words. The list is loaded lazily on first use, so it works no matter when
+-- Proflis.Start() runs relative to this module loading.
+
+local _Utility  = script.Parent
+local _Packages = _Utility.Parent._Packages
+local Proflis   = require(_Packages.Proflis)
+
+local AdviseFilter = {}
+
+type Entry = { word: string, pattern: string }
+
+local SEP: { [string]: boolean } = {
+	[" "] = true, ["."] = true, ["-"] = true, ["_"] = true,
+	["*"] = true, [","] = true, ["'"] = true,
+}
+
+-- digit/symbol leet mapped to letters
+local LEET: { [string]: string } = {
+	["4"] = "a", ["@"] = "a", ["3"] = "e", ["1"] = "i", ["!"] = "i",
+	["0"] = "o", ["5"] = "s", ["$"] = "s", ["7"] = "t", ["8"] = "b", ["9"] = "g",
+}
+
+local VOWELS: { [string]: boolean } = { a = true, e = true, i = true, o = true, u = true }
+
+local SENTINEL = "\1" -- non-letter boundary a blocked word can never cross
+
+-- Escapes a single char for use inside a Lua pattern.
+local function escapeLiteral(c: string): string
+	if c:match("%w") then
+		return c
+	end
+	return "%" .. c
+end
+
+-- Builds a find-pattern for a word where vowels are optional (catches
+-- missing-vowel obfuscation like "fck" for "fuck") and consonants stay literal
+-- and adjacent (keeps unrelated words like "flock" from matching).
+local function wordToPattern(word: string): string
+	local parts = {}
+	for i = 1, #word do
+		local c = word:sub(i, i)
+		if VOWELS[c] then
+			table.insert(parts, "[aeiou]?")
+		else
+			table.insert(parts, escapeLiteral(c))
+		end
+	end
+	return table.concat(parts)
+end
+
+local function makeEntry(word: string): Entry
+	local lower = word:lower()
+	return { word = lower, pattern = wordToPattern(lower) }
+end
+
+local _blocked: { Entry } = {}
+local _allowed: { [string]: boolean } = {}
+
+-- Lazily build the blocklist from Proflis the first time we filter anything.
+-- Deferred so it doesn't matter whether Proflis.Start() (server fetch) has run
+-- yet when this module is required. Fail-open: an empty list means we simply
+-- lean entirely on Roblox's TextService.
+local _loaded = false
+local function ensureLoaded()
+	if _loaded then return end
+	_loaded = true
+	local ok, list = pcall(Proflis.Get)
+	if not ok or type(list) ~= "table" then return end
+	for key in list do
+		if type(key) == "string" and key ~= "" then
+			table.insert(_blocked, makeEntry(key))
+		end
+	end
+end
+
+-- Build a collapsed normalized string plus a map from normalized position ->
+-- original byte index, so a match can be projected back onto the source text.
+local function normalize(text: string): (string, { number })
+	local chars: { string } = {}
+	local map: { number } = {}
+	for i = 1, #text do
+		local ch = text:sub(i, i)
+		local low = ch:lower()
+		if low:match("%a") then
+			table.insert(chars, low)
+			table.insert(map, i)
+		elseif LEET[ch] then
+			table.insert(chars, LEET[ch])
+			table.insert(map, i)
+		elseif SEP[ch] then
+			-- dropped
+		else
+			table.insert(chars, SENTINEL)
+			table.insert(map, i)
+		end
+	end
+	return table.concat(chars), map
+end
+
+-- Expands a byte span in the ORIGINAL text out to the full contiguous word/number
+-- run it sits inside, so the allow list can be checked against the whole enclosing
+-- word rather than just the matched substring.
+local function expandToEnclosingWord(text: string, startByte: number, endByte: number): (number, number)
+	local len = #text
+	local s, e = startByte, endByte
+
+	local function isWordChar(c: string): boolean
+		return c ~= "" and (c:match("%w") ~= nil or c == "'")
+	end
+
+	while s > 1 and isWordChar(text:sub(s - 1, s - 1)) do
+		s -= 1
+	end
+	while e < len and isWordChar(text:sub(e + 1, e + 1)) do
+		e += 1
+	end
+
+	return s, e
+end
+
+-- Original [start, stop] spans to mask, plus the matched original substring.
+-- Allow-listed enclosing words are skipped.
+local function findSpans(text: string): { { start: number, stop: number, match: string } }
+	ensureLoaded()
+	local norm, map = normalize(text)
+	local spans: { { start: number, stop: number, match: string } } = {}
+
+	for _, entry in _blocked do
+		local from = 1
+		while true do
+			local s, e = norm:find(entry.pattern, from)
+			if not s then break end
+
+			local byteStart, byteEnd = map[s], map[e]
+
+			local skip = false
+			if next(_allowed) ~= nil then
+				local ws, we = expandToEnclosingWord(text, byteStart, byteEnd)
+				local enclosing = text:sub(ws, we):lower()
+				if _allowed[enclosing] then
+					skip = true
+				end
+			end
+
+			if not skip then
+				table.insert(spans, { start = byteStart, stop = byteEnd, match = text:sub(byteStart, byteEnd) })
+			end
+
+			from = (e >= s) and (e + 1) or (s + 1) -- guard against zero-length matches
+		end
+	end
+
+	return spans
+end
+
+-- ─── Core API (drop-in for the old HardBlockFilter) ──────────────────────────
+
+function AdviseFilter.Replace(text: string): string
+	if text == "" then return text end
+	local spans = findSpans(text)
+	if #spans == 0 then return text end
+	local masked = table.create(#text)
+	for i = 1, #text do
+		masked[i] = text:sub(i, i)
+	end
+	for _, span in spans do
+		for i = span.start, span.stop do
+			masked[i] = "*"
+		end
+	end
+	return table.concat(masked)
+end
+
+function AdviseFilter.ContainsBlockedWord(text: string): boolean
+	if text == "" then return false end
+	return #findSpans(text) > 0
+end
+
+-- Extend the blocklist at runtime (surfaced as Bold.AddBlockedWords).
+function AdviseFilter.Add(words: { string } | string)
+	if type(words) == "string" then
+		table.insert(_blocked, makeEntry(words :: string))
+		return
+	end
+	for _, w in words :: { string } do
+		table.insert(_blocked, makeEntry(w))
+	end
+end
+
+-- Remove a word from the blocklist at runtime.
+function AdviseFilter.Remove(word: string)
+	local lower = word:lower()
+	for i, entry in _blocked do
+		if entry.word == lower then
+			table.remove(_blocked, i)
+			break
+		end
+	end
+end
+
+-- ─── Allow list (Scunthorpe-style exceptions) ────────────────────────────────
+
+function AdviseFilter.AddAllowed(words: { string } | string)
+	if type(words) == "string" then
+		_allowed[(words :: string):lower()] = true
+		return
+	end
+	for _, w in words :: { string } do
+		_allowed[w:lower()] = true
+	end
+end
+
+function AdviseFilter.RemoveAllowed(word: string)
+	_allowed[word:lower()] = nil
+end
+
+function AdviseFilter.IsAllowed(word: string): boolean
+	return _allowed[word:lower()] == true
+end
+
+-- ─── Match reporting (logging / scoring / warning reasons) ───────────────────
+
+-- Returns the matched original substrings, e.g. { "f*ck", "fck" }.
+function AdviseFilter.Detect(text: string): { string }
+	local spans = findSpans(text)
+	local matches = table.create(#spans)
+	for _, span in spans do
+		table.insert(matches, span.match)
+	end
+	return matches
+end
+
+-- Number of hits -- convenient for scoring/thresholds in a warning system.
+function AdviseFilter.Count(text: string): number
+	return #findSpans(text)
+end
+
+return AdviseFilter
+]])
+mod("Config", _15, [[
 -- Bold
 -- _Utility/Config
 -- Plinko Labs
@@ -13821,7 +14435,7 @@ end
 
 return Config
 ]])
-mod("Events", _14, [[
+mod("Events", _15, [[
 -- Bold
 -- _Utility/Events
 -- Plinko Labs
@@ -13880,7 +14494,7 @@ end
 
 return Events
 ]])
-mod("Filter", _14, [=[
+mod("Filter", _15, [=[
 -- Bold
 -- _Utility/Filter
 -- Plinko Labs
@@ -13891,7 +14505,7 @@ mod("Filter", _14, [=[
 	Layered text filtering, split into a fast path the delivery pipeline waits
 	on, and a deferred path that never blocks delivery:
 
-		Fast  : TextService:FilterStringAsync  +  HardBlockFilter   (cached)
+		Fast  : TextService:FilterStringAsync  +  Advise   (cached)
 		        -> authoritative, instant; everything renders from this
 		Deferred : PurgoMalum (https://www.purgomalum.com)            (best-effort)
 		        -> runs AFTER the message is already on screen; if it catches
@@ -13910,7 +14524,7 @@ local RunService   = game:GetService("RunService")
 local IS_SERVER = RunService:IsServer()
 
 local Promise        = require(script.Parent.Parent._Packages.Promise)
-local HardBlockFilter = require(script.Parent.HardBlockFilter)
+local Advise = require(script.Parent.Advise)
 
 local Filter = {}
 
@@ -13961,7 +14575,7 @@ end
 -- Broadcast-scoped: result is appropriate for ALL viewers.
 function Filter.Fast(text: string, fromPlayer: Player?)
 	if not IS_SERVER or text == "" then
-		return Promise.resolve(HardBlockFilter.Replace(text))
+		return Promise.resolve(Advise.Replace(text))
 	end
 
 	local uid = fromPlayer and fromPlayer.UserId or 0
@@ -13973,14 +14587,14 @@ function Filter.Fast(text: string, fromPlayer: Player?)
 			return res:GetNonChatStringForBroadcastAsync()
 		end)
 		local robloxFiltered = ok and result or text
-		resolve(HardBlockFilter.Replace(robloxFiltered))
+		resolve(Advise.Replace(robloxFiltered))
 	end)
 end
 
 -- Per-viewer scoped: result is appropriate for `toPlayer` specifically (whispers).
 function Filter.FastForPlayer(text: string, fromPlayer: Player, toPlayer: Player)
 	if not IS_SERVER or text == "" then
-		return Promise.resolve(HardBlockFilter.Replace(text))
+		return Promise.resolve(Advise.Replace(text))
 	end
 
 	local key = cacheKey(text, fromPlayer.UserId, "user:" .. tostring(toPlayer.UserId))
@@ -13991,7 +14605,7 @@ function Filter.FastForPlayer(text: string, fromPlayer: Player, toPlayer: Player
 			return res:GetNonChatStringForUserAsync(toPlayer.UserId)
 		end)
 		local robloxFiltered = ok and result or text
-		resolve(HardBlockFilter.Replace(robloxFiltered))
+		resolve(Advise.Replace(robloxFiltered))
 	end)
 end
 
@@ -14021,119 +14635,7 @@ end
 
 return Filter
 ]=])
-mod("HardBlockFilter", _14, [[
--- Bold
--- _Utility/HardBlockFilter
--- Plinko Labs
-
--- Local case-insensitive blocklist backstop layered on top of Roblox's
--- TextService filter (not a replacement). Detection runs over a *collapsed,
--- normalized* copy of the text -- spacing/punctuation dropped, digit-leet mapped
--- to letters -- while masking is applied back to the original via an index map.
--- That catches "f u c k", "f.u.c.k", "f0ck" and "fvck"-style obfuscation without
--- relying on TextService. The blocklist MUST stay narrow: matching is substring
--- based (no word boundary), which is only false-positive-safe for words that
--- never legitimately appear inside other words.
-
-local HardBlockFilter = {}
-
-local _blocked: { string } = {
-	"fuck",
-	"fvck",
-}
-
--- separators dropped so obfuscating letters become adjacent
-local SEP: { [string]: boolean } = {
-	[" "] = true, ["."] = true, ["-"] = true, ["_"] = true,
-	["*"] = true, [","] = true, ["'"] = true,
-}
-
--- digit/symbol leet mapped to letters
-local LEET: { [string]: string } = {
-	["4"] = "a", ["@"] = "a", ["3"] = "e", ["1"] = "i", ["!"] = "i",
-	["0"] = "o", ["5"] = "s", ["$"] = "s", ["7"] = "t", ["8"] = "b", ["9"] = "g",
-}
-
-local SENTINEL = "\1" -- non-letter boundary a blocked word can never cross
-
--- Build a collapsed normalized string plus a map from normalized position ->
--- original byte index, so a match can be projected back onto the source text.
-local function normalize(text: string): (string, { number })
-	local chars: { string } = {}
-	local map: { number } = {}
-
-	for i = 1, #text do
-		local ch = text:sub(i, i)
-		local low = ch:lower()
-		if low:match("%a") then
-			table.insert(chars, low)
-			table.insert(map, i)
-		elseif LEET[ch] then
-			table.insert(chars, LEET[ch])
-			table.insert(map, i)
-		elseif SEP[ch] then
-			-- dropped
-		else
-			table.insert(chars, SENTINEL)
-			table.insert(map, i)
-		end
-	end
-
-	return table.concat(chars), map
-end
-
--- Original [startByte, endByte] spans to mask.
-local function findSpans(text: string): { { number } }
-	local norm, map = normalize(text)
-	local spans: { { number } } = {}
-	for _, word in _blocked do
-		local from = 1
-		while true do
-			local s, e = norm:find(word, from, true)
-			if not s then break end
-			table.insert(spans, { map[s], map[e] })
-			from = e + 1
-		end
-	end
-	return spans
-end
-
-function HardBlockFilter.Replace(text: string): string
-	if text == "" then return text end
-	local spans = findSpans(text)
-	if #spans == 0 then return text end
-
-	local masked = table.create(#text)
-	for i = 1, #text do
-		masked[i] = text:sub(i, i)
-	end
-	for _, span in spans do
-		for i = span[1], span[2] do
-			masked[i] = "*"
-		end
-	end
-	return table.concat(masked)
-end
-
-function HardBlockFilter.ContainsBlockedWord(text: string): boolean
-	if text == "" then return false end
-	return #findSpans(text) > 0
-end
-
--- Extend the blocklist at runtime (surfaced as Bold.AddBlockedWords).
-function HardBlockFilter.Add(words: { string } | string)
-	if type(words) == "string" then
-		table.insert(_blocked, (words :: string):lower())
-		return
-	end
-	for _, w in words :: { string } do
-		table.insert(_blocked, w:lower())
-	end
-end
-
-return HardBlockFilter
-]])
-mod("Hooks", _14, [[
+mod("Hooks", _15, [[
 -- Bold
 -- _Utility/Hooks
 -- Plinko Labs
@@ -14156,7 +14658,7 @@ function Hooks:Fire(eventName: string, ...)
 end
 
 return Hooks]])
-mod("Id", _14, [[
+mod("Id", _15, [[
 -- Bold
 -- _Utility/Id
 -- Plinko Labs
@@ -14170,7 +14672,7 @@ function Id.Generate(): string
 end
 
 return Id]])
-mod("ImageWrap", _14, [[
+mod("ImageWrap", _15, [[
 -- Bold
 -- _Utility/ImageWrap
 -- Plinko Labs
@@ -14186,7 +14688,7 @@ function ImageWrap.WrapId(id: string)
 end
 
 return ImageWrap]])
-mod("Keys", _14, [[
+mod("Keys", _15, [[
 -- Bold
 -- _Utility/Keys
 -- Plinko Labs
@@ -14290,7 +14792,7 @@ end
 
 return Keys
 ]])
-mod("Motion", _14, [[
+mod("Motion", _15, [[
 -- Bold
 -- _Utility/Motion
 -- Plinko Labs
@@ -14447,7 +14949,7 @@ end
 
 return Motion
 ]])
-mod("Skin", _14, [[
+mod("Skin", _15, [[
 -- Bold
 -- _Utility/Skin
 -- Plinko Labs
@@ -14522,5 +15024,5 @@ end
 return Skin
 ]])
 
-print("[Bold] installed 66 modules under ReplicatedStorage.Bold")
+print("[Bold] installed 67 modules under ReplicatedStorage.Bold")
 return true
