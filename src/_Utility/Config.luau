@@ -177,6 +177,10 @@ Config.Filter = {
 	enabled         = true,
 	purgomalum      = true,
 	client_backstop = true,
+	-- anti-spam: at most `rate_limit` messages per `rate_window` seconds per
+	-- player (server-enforced). Set either to 0 to disable.
+	rate_limit      = 5,
+	rate_window     = 4,
 }
 
 Config.Keys = {

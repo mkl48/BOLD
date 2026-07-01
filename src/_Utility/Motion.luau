@@ -95,15 +95,22 @@ function Motion.FadeOld(row: GuiObject)
 
 	task.delay(fadeAfter, function()
 		if not row.Parent then return end
-		for _, t in fadeTargets(row) do
-			Motion.tween(t.obj, 0.6, { [t.prop] = math.max(t.target, 0.55) }, EASE_IO)
-		end
+		row:SetAttribute("BoldFaded", true)
+		Motion.Dim(row)
 	end)
 
 	if hideAfter and hideAfter > 0 then
 		task.delay(hideAfter, function()
 			if row.Parent then row:Destroy() end
 		end)
+	end
+end
+
+-- Dim an old row to grey (used by FadeOld, and to re-grey it when the mouse
+-- leaves after a hover woke it back up).
+function Motion.Dim(row: GuiObject)
+	for _, t in fadeTargets(row) do
+		Motion.tween(t.obj, 0.35, { [t.prop] = math.max(t.target, 0.55) }, EASE_IO)
 	end
 end
 

@@ -1016,6 +1016,9 @@ function Render.Render(message: any): GuiObject?
 	Motion.RowIn(row)
 	Motion.FadeOld(row)
 	row.MouseEnter:Connect(function() Motion.Wake(row) end)
+	row.MouseLeave:Connect(function()
+		if row:GetAttribute("BoldFaded") then Motion.Dim(row) end
+	end)
 
 	trim()
 	if _stick then Motion.ScrollToBottom(_container, true) end

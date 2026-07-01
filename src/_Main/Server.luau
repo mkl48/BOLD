@@ -143,8 +143,35 @@ local function scheduleDeferred(message: any)
 		:catch(function() end)
 end
 
+-- ─── Anti-spam rate limit (per player, sliding window) ───────────────────────
+
+local _rate: { [number]: { number } } = {}
+
+local function rateLimited(player: Player?): boolean
+	if not player then return false end
+	local limit = Config.Filter.rate_limit or 0
+	local window = Config.Filter.rate_window or 0
+	if limit <= 0 or window <= 0 then return false end
+
+	local now = os.clock()
+	local fresh = {}
+	for _, t in _rate[player.UserId] or {} do
+		if now - t < window then table.insert(fresh, t) end
+	end
+	_rate[player.UserId] = fresh
+
+	if #fresh >= limit then return true end
+	table.insert(fresh, now)
+	return false
+end
+
 -- The unified path used by both client sends and server Dispatch.
 local function process(message: any, player: Player?)
+	if rateLimited(player) then
+		Events.MessageDropped:Fire("rate_limit", player)
+		return
+	end
+
 	stamp(message, player)
 	Hooks:Fire("BeforeDeliver", message, player)
 
@@ -219,6 +246,10 @@ function Server.Start()
 	end)
 
 	Substance.Subscribe(Network.REACT_CHANNEL, handleReact)
+
+	Players.PlayerRemoving:Connect(function(p)
+		_rate[p.UserId] = nil
+	end)
 end
 
 -- Server-originated message (skips the SEND channel).

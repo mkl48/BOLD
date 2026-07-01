@@ -8,8 +8,9 @@
 	Layered text filtering, split into a fast path the delivery pipeline waits
 	on, and a deferred path that never blocks delivery:
 
-		Fast  : TextService:FilterStringAsync  +  Advise   (cached)
-		        -> authoritative, instant; everything renders from this
+		Fast  : TextService:FilterStringAsync   (cached)
+		        -> authoritative, instant; everything renders from this.
+		           Advise does NOT mask here -- it is warn-only (the input pill).
 		Deferred : PurgoMalum (https://www.purgomalum.com)            (best-effort)
 		        -> runs AFTER the message is already on screen; if it catches
 		           more, the server patches the message in place
@@ -27,7 +28,6 @@ local RunService   = game:GetService("RunService")
 local IS_SERVER = RunService:IsServer()
 
 local Promise        = require(script.Parent.Parent._Packages.Promise)
-local Advise = require(script.Parent.Advise)
 
 local Filter = {}
 
@@ -78,7 +78,7 @@ end
 -- Broadcast-scoped: result is appropriate for ALL viewers.
 function Filter.Fast(text: string, fromPlayer: Player?)
 	if not IS_SERVER or text == "" then
-		return Promise.resolve(Advise.Replace(text))
+		return Promise.resolve(text)
 	end
 
 	local uid = fromPlayer and fromPlayer.UserId or 0
@@ -90,14 +90,14 @@ function Filter.Fast(text: string, fromPlayer: Player?)
 			return res:GetNonChatStringForBroadcastAsync()
 		end)
 		local robloxFiltered = ok and result or text
-		resolve(Advise.Replace(robloxFiltered))
+		resolve(robloxFiltered)
 	end)
 end
 
 -- Per-viewer scoped: result is appropriate for `toPlayer` specifically (whispers).
 function Filter.FastForPlayer(text: string, fromPlayer: Player, toPlayer: Player)
 	if not IS_SERVER or text == "" then
-		return Promise.resolve(Advise.Replace(text))
+		return Promise.resolve(text)
 	end
 
 	local key = cacheKey(text, fromPlayer.UserId, "user:" .. tostring(toPlayer.UserId))
@@ -108,7 +108,7 @@ function Filter.FastForPlayer(text: string, fromPlayer: Player, toPlayer: Player
 			return res:GetNonChatStringForUserAsync(toPlayer.UserId)
 		end)
 		local robloxFiltered = ok and result or text
-		resolve(Advise.Replace(robloxFiltered))
+		resolve(robloxFiltered)
 	end)
 end
 

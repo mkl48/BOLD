@@ -1007,6 +1007,9 @@ export type FilterConfig = {
 	purgomalum: boolean?,
 	-- client-side hard-block backstop at render time
 	client_backstop: boolean?,
+	-- anti-spam: max messages per window per player (0 disables)
+	rate_limit: number?,
+	rate_window: number?,
 }
 
 export type KeysConfig = {
@@ -1472,7 +1475,6 @@ local Substance       = require(_Packages.Substance)
 local Events          = require(_Utility.Events)
 local Hooks           = require(_Utility.Hooks)
 local Config          = require(_Utility.Config)
-local Advise          = require(_Utility.Advise)
 local Social          = require(_Utility.Social)
 local Network         = require(_Main.Network)
 local Interface       = require(_Main.Interface)
@@ -1501,11 +1503,6 @@ function Client.Start()
 		-- locally ignored author: drop it silently
 		if message.metadata and Social.IsIgnored(message.metadata.author_id) then return end
 
-		-- client-side hard-block backstop: filter on our side too, before parse
-		if Config.Filter.client_backstop and message.content and message.content.raw_text then
-			message.content.raw_text = Advise.Replace(message.content.raw_text)
-		end
-
 		Hooks:Fire("AfterDeliver", message)
 		Events.MessageReceived:Fire(message)
 
@@ -1519,11 +1516,6 @@ function Client.Start()
 	Substance.Subscribe(Network.UPDATE_CHANNEL, function(payload)
 		if not payload.Id or not payload.Patch then return end
 
-		-- patched text is server-authoritative but re-guard locally anyway
-		if payload.Patch.text and Config.Filter.client_backstop then
-			payload.Patch.text = Advise.Replace(payload.Patch.text)
-		end
-
 		Interface.ApplyUpdate(payload.Id, payload.Patch)
 		Events.MessageUpdated:Fire(payload.Id, payload.Patch)
 	end)
@@ -1532,9 +1524,6 @@ end
 function Client.Send(payload: any)
 	payload = payload or {}
 	local text = payload.text or ""
-	if Config.Filter.client_backstop then
-		text = Advise.Replace(text)
-	end
 
 	local meta: { [string]: any } = {}
 	if payload.recipient_id then meta.recipient_id = payload.recipient_id end
@@ -3634,6 +3623,9 @@ function Render.Render(message: any): GuiObject?
 	Motion.RowIn(row)
 	Motion.FadeOld(row)
 	row.MouseEnter:Connect(function() Motion.Wake(row) end)
+	row.MouseLeave:Connect(function()
+		if row:GetAttribute("BoldFaded") then Motion.Dim(row) end
+	end)
 
 	trim()
 	if _stick then Motion.ScrollToBottom(_container, true) end
@@ -3848,8 +3840,35 @@ local function scheduleDeferred(message: any)
 		:catch(function() end)
 end
 
+-- ─── Anti-spam rate limit (per player, sliding window) ───────────────────────
+
+local _rate: { [number]: { number } } = {}
+
+local function rateLimited(player: Player?): boolean
+	if not player then return false end
+	local limit = Config.Filter.rate_limit or 0
+	local window = Config.Filter.rate_window or 0
+	if limit <= 0 or window <= 0 then return false end
+
+	local now = os.clock()
+	local fresh = {}
+	for _, t in _rate[player.UserId] or {} do
+		if now - t < window then table.insert(fresh, t) end
+	end
+	_rate[player.UserId] = fresh
+
+	if #fresh >= limit then return true end
+	table.insert(fresh, now)
+	return false
+end
+
 -- The unified path used by both client sends and server Dispatch.
 local function process(message: any, player: Player?)
+	if rateLimited(player) then
+		Events.MessageDropped:Fire("rate_limit", player)
+		return
+	end
+
 	stamp(message, player)
 	Hooks:Fire("BeforeDeliver", message, player)
 
@@ -3924,6 +3943,10 @@ function Server.Start()
 	end)
 
 	Substance.Subscribe(Network.REACT_CHANNEL, handleReact)
+
+	Players.PlayerRemoving:Connect(function(p)
+		_rate[p.UserId] = nil
+	end)
 end
 
 -- Server-originated message (skips the SEND channel).
@@ -14978,6 +15001,10 @@ Config.Filter = {
 	enabled         = true,
 	purgomalum      = true,
 	client_backstop = true,
+	-- anti-spam: at most `rate_limit` messages per `rate_window` seconds per
+	-- player (server-enforced). Set either to 0 to disable.
+	rate_limit      = 5,
+	rate_window     = 4,
 }
 
 Config.Keys = {
@@ -15146,8 +15173,9 @@ mod("Filter", _15, [=[
 	Layered text filtering, split into a fast path the delivery pipeline waits
 	on, and a deferred path that never blocks delivery:
 
-		Fast  : TextService:FilterStringAsync  +  Advise   (cached)
-		        -> authoritative, instant; everything renders from this
+		Fast  : TextService:FilterStringAsync   (cached)
+		        -> authoritative, instant; everything renders from this.
+		           Advise does NOT mask here -- it is warn-only (the input pill).
 		Deferred : PurgoMalum (https://www.purgomalum.com)            (best-effort)
 		        -> runs AFTER the message is already on screen; if it catches
 		           more, the server patches the message in place
@@ -15165,7 +15193,6 @@ local RunService   = game:GetService("RunService")
 local IS_SERVER = RunService:IsServer()
 
 local Promise        = require(script.Parent.Parent._Packages.Promise)
-local Advise = require(script.Parent.Advise)
 
 local Filter = {}
 
@@ -15216,7 +15243,7 @@ end
 -- Broadcast-scoped: result is appropriate for ALL viewers.
 function Filter.Fast(text: string, fromPlayer: Player?)
 	if not IS_SERVER or text == "" then
-		return Promise.resolve(Advise.Replace(text))
+		return Promise.resolve(text)
 	end
 
 	local uid = fromPlayer and fromPlayer.UserId or 0
@@ -15228,14 +15255,14 @@ function Filter.Fast(text: string, fromPlayer: Player?)
 			return res:GetNonChatStringForBroadcastAsync()
 		end)
 		local robloxFiltered = ok and result or text
-		resolve(Advise.Replace(robloxFiltered))
+		resolve(robloxFiltered)
 	end)
 end
 
 -- Per-viewer scoped: result is appropriate for `toPlayer` specifically (whispers).
 function Filter.FastForPlayer(text: string, fromPlayer: Player, toPlayer: Player)
 	if not IS_SERVER or text == "" then
-		return Promise.resolve(Advise.Replace(text))
+		return Promise.resolve(text)
 	end
 
 	local key = cacheKey(text, fromPlayer.UserId, "user:" .. tostring(toPlayer.UserId))
@@ -15246,7 +15273,7 @@ function Filter.FastForPlayer(text: string, fromPlayer: Player, toPlayer: Player
 			return res:GetNonChatStringForUserAsync(toPlayer.UserId)
 		end)
 		local robloxFiltered = ok and result or text
-		resolve(Advise.Replace(robloxFiltered))
+		resolve(robloxFiltered)
 	end)
 end
 
@@ -15531,15 +15558,22 @@ function Motion.FadeOld(row: GuiObject)
 
 	task.delay(fadeAfter, function()
 		if not row.Parent then return end
-		for _, t in fadeTargets(row) do
-			Motion.tween(t.obj, 0.6, { [t.prop] = math.max(t.target, 0.55) }, EASE_IO)
-		end
+		row:SetAttribute("BoldFaded", true)
+		Motion.Dim(row)
 	end)
 
 	if hideAfter and hideAfter > 0 then
 		task.delay(hideAfter, function()
 			if row.Parent then row:Destroy() end
 		end)
+	end
+end
+
+-- Dim an old row to grey (used by FadeOld, and to re-grey it when the mouse
+-- leaves after a hover woke it back up).
+function Motion.Dim(row: GuiObject)
+	for _, t in fadeTargets(row) do
+		Motion.tween(t.obj, 0.35, { [t.prop] = math.max(t.target, 0.55) }, EASE_IO)
 	end
 end
 

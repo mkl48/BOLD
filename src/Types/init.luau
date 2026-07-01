@@ -246,6 +246,9 @@ export type FilterConfig = {
 	purgomalum: boolean?,
 	-- client-side hard-block backstop at render time
 	client_backstop: boolean?,
+	-- anti-spam: max messages per window per player (0 disables)
+	rate_limit: number?,
+	rate_window: number?,
 }
 
 export type KeysConfig = {

@@ -13,7 +13,6 @@ local Substance       = require(_Packages.Substance)
 local Events          = require(_Utility.Events)
 local Hooks           = require(_Utility.Hooks)
 local Config          = require(_Utility.Config)
-local Advise          = require(_Utility.Advise)
 local Social          = require(_Utility.Social)
 local Network         = require(_Main.Network)
 local Interface       = require(_Main.Interface)
@@ -42,11 +41,6 @@ function Client.Start()
 		-- locally ignored author: drop it silently
 		if message.metadata and Social.IsIgnored(message.metadata.author_id) then return end
 
-		-- client-side hard-block backstop: filter on our side too, before parse
-		if Config.Filter.client_backstop and message.content and message.content.raw_text then
-			message.content.raw_text = Advise.Replace(message.content.raw_text)
-		end
-
 		Hooks:Fire("AfterDeliver", message)
 		Events.MessageReceived:Fire(message)
 
@@ -60,11 +54,6 @@ function Client.Start()
 	Substance.Subscribe(Network.UPDATE_CHANNEL, function(payload)
 		if not payload.Id or not payload.Patch then return end
 
-		-- patched text is server-authoritative but re-guard locally anyway
-		if payload.Patch.text and Config.Filter.client_backstop then
-			payload.Patch.text = Advise.Replace(payload.Patch.text)
-		end
-
 		Interface.ApplyUpdate(payload.Id, payload.Patch)
 		Events.MessageUpdated:Fire(payload.Id, payload.Patch)
 	end)
@@ -73,9 +62,6 @@ end
 function Client.Send(payload: any)
 	payload = payload or {}
 	local text = payload.text or ""
-	if Config.Filter.client_backstop then
-		text = Advise.Replace(text)
-	end
 
 	local meta: { [string]: any } = {}
 	if payload.recipient_id then meta.recipient_id = payload.recipient_id end
