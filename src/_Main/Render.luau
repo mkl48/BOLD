@@ -46,6 +46,7 @@ local KIND_STYLE: { [string]: { prefix: string?, text_key: string, bold: boolean
 local KIND_OVERRIDE: { [string]: { bg_key: string?, text_key: string } } = {}
 
 local _container: ScrollingFrame? = nil
+local _stick = true -- whether we should auto-scroll (user is at/near the bottom)
 local _registry: { [string]: { message: any, row: GuiObject, order: number, revealed: boolean, grouped: boolean, collapsed: boolean } } = {}
 local _rendered: { string } = {} -- ids in render order, for trimming
 local _seq = 0
@@ -56,6 +57,12 @@ local _lastCollapsed = false -- collapse state for the most recent buildRow
 
 function Render.SetContainer(frame: ScrollingFrame)
 	_container = frame
+	-- follow the user: as soon as they scroll away from the bottom we stop
+	-- auto-scrolling; when they return to the bottom it resumes.
+	frame:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+		local remaining = frame.AbsoluteCanvasSize.Y - frame.CanvasPosition.Y - frame.AbsoluteWindowSize.Y
+		_stick = remaining <= 60
+	end)
 end
 
 -- ─── helpers ─────────────────────────────────────────────────────────────────
@@ -951,12 +958,6 @@ end
 
 -- ─── list management ─────────────────────────────────────────────────────────
 
-local function nearBottom(): boolean
-	if not _container then return true end
-	local remaining = _container.AbsoluteCanvasSize.Y - _container.CanvasPosition.Y - _container.AbsoluteWindowSize.Y
-	return remaining <= 60
-end
-
 local function trim()
 	if not _container then return end
 	local excess = #_rendered - Config.Interface.max_messages
@@ -987,7 +988,6 @@ end
 function Render.Render(message: any): GuiObject?
 	if not _container then return nil end
 
-	local stick = nearBottom()
 	_seq += 1
 
 	local ok, result = pcall(buildRow, message, false)
@@ -1010,7 +1010,7 @@ function Render.Render(message: any): GuiObject?
 	row.MouseEnter:Connect(function() Motion.Wake(row) end)
 
 	trim()
-	if stick then Motion.ScrollToBottom(_container, true) end
+	if _stick then Motion.ScrollToBottom(_container, true) end
 
 	Events.MessageRendered:Fire(message, row)
 	return row

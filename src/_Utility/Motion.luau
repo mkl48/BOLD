@@ -7,6 +7,7 @@
 -- works regardless of the UIListLayout the rows sit in.
 
 local TweenService = game:GetService("TweenService")
+local RunService   = game:GetService("RunService")
 
 local Config = require(script.Parent.Config)
 
@@ -139,15 +140,18 @@ function Motion.Pop(obj: GuiObject)
 	end)
 end
 
--- Scroll a list to the bottom, optionally easing.
+-- Scroll a list to the bottom, optionally easing. Waits a frame so the
+-- AutomaticCanvasSize has actually grown to include the new content before we
+-- compute the target, otherwise we'd scroll to a stale (too-short) position.
 function Motion.ScrollToBottom(frame: ScrollingFrame, smooth: boolean?)
-	task.defer(function()
+	task.spawn(function()
+		RunService.Heartbeat:Wait()
 		if not frame.Parent then return end
-		local target = frame.AbsoluteCanvasSize.Y
+		local target = math.max(0, frame.AbsoluteCanvasSize.Y - frame.AbsoluteWindowSize.Y)
 		if smooth and anim().smooth_scroll then
-			Motion.tween(frame, 0.25, { CanvasPosition = Vector2.new(0, target) }, EASE_IO)
+			Motion.tween(frame, 0.2, { CanvasPosition = Vector2.new(0, target) }, EASE_IO)
 		else
-			frame.CanvasPosition = Vector2.new(0, math.huge)
+			frame.CanvasPosition = Vector2.new(0, target)
 		end
 	end)
 end

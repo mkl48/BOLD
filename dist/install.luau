@@ -1691,6 +1691,7 @@ local function renderSuggestions(query: string, items: { any })
 	_suggestions = items
 	_activeQuery = query
 	_selectedIndex = math.clamp(_selectedIndex, 1, math.max(1, #items))
+	local selectedRow: GuiObject? = nil
 
 	for _, child in _autocompleteList:GetChildren() do
 		if child:IsA("GuiObject") then child:Destroy() end
@@ -1729,6 +1730,7 @@ local function renderSuggestions(query: string, items: { any })
 		row.ZIndex = 52
 		row.Parent = _autocompleteList
 		Skin.corner(row, 4)
+		if i == _selectedIndex then selectedRow = row end
 
 		row.MouseButton1Click:Connect(function()
 			_selectedIndex = i
@@ -1776,6 +1778,23 @@ local function renderSuggestions(query: string, items: { any })
 	end
 
 	_autocompleteFrame.Visible = true
+
+	-- keep the highlighted row in view while arrow-navigating
+	if selectedRow then
+		task.defer(function()
+			local list = _autocompleteList
+			if not selectedRow or not selectedRow.Parent or not list then return end
+			local rowTop = selectedRow.AbsolutePosition.Y - list.AbsolutePosition.Y + list.CanvasPosition.Y
+			local rowBot = rowTop + selectedRow.AbsoluteSize.Y
+			local viewTop = list.CanvasPosition.Y
+			local viewBot = viewTop + list.AbsoluteWindowSize.Y
+			if rowTop < viewTop then
+				list.CanvasPosition = Vector2.new(0, math.max(0, rowTop - 4))
+			elseif rowBot > viewBot then
+				list.CanvasPosition = Vector2.new(0, rowBot - list.AbsoluteWindowSize.Y + 4)
+			end
+		end)
+	end
 end
 
 -- ─── search sources ──────────────────────────────────────────────────────────
@@ -2384,15 +2403,15 @@ local function buildGui()
 
 	-- resize grip (bottom-right): drag to change width + how tall the list can grow
 	if cfg.resizable then
-		local grip = Instance.new("TextButton")
+		local grip = Instance.new("ImageButton")
 		grip.Name = "ResizeGrip"
 		grip.AnchorPoint = Vector2.new(1, 1)
 		grip.Position = UDim2.new(1, -2, 1, -2)
 		grip.Size = UDim2.fromOffset(16, 16)
 		grip.BackgroundTransparency = 1
-		grip.Text = "⤡"
-		grip.TextColor3 = tk("subtext")
-		grip.TextSize = 16
+		grip.Image = "rbxassetid://120944550080981"
+		grip.ImageColor3 = tk("subtext")
+		grip.ImageTransparency = 0.2
 		grip.ZIndex = 10
 		grip.Parent = listWrapper
 
@@ -2636,6 +2655,7 @@ local KIND_STYLE: { [string]: { prefix: string?, text_key: string, bold: boolean
 local KIND_OVERRIDE: { [string]: { bg_key: string?, text_key: string } } = {}
 
 local _container: ScrollingFrame? = nil
+local _stick = true -- whether we should auto-scroll (user is at/near the bottom)
 local _registry: { [string]: { message: any, row: GuiObject, order: number, revealed: boolean, grouped: boolean, collapsed: boolean } } = {}
 local _rendered: { string } = {} -- ids in render order, for trimming
 local _seq = 0
@@ -2646,6 +2666,12 @@ local _lastCollapsed = false -- collapse state for the most recent buildRow
 
 function Render.SetContainer(frame: ScrollingFrame)
 	_container = frame
+	-- follow the user: as soon as they scroll away from the bottom we stop
+	-- auto-scrolling; when they return to the bottom it resumes.
+	frame:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+		local remaining = frame.AbsoluteCanvasSize.Y - frame.CanvasPosition.Y - frame.AbsoluteWindowSize.Y
+		_stick = remaining <= 60
+	end)
 end
 
 -- ─── helpers ─────────────────────────────────────────────────────────────────
@@ -3541,12 +3567,6 @@ end
 
 -- ─── list management ─────────────────────────────────────────────────────────
 
-local function nearBottom(): boolean
-	if not _container then return true end
-	local remaining = _container.AbsoluteCanvasSize.Y - _container.CanvasPosition.Y - _container.AbsoluteWindowSize.Y
-	return remaining <= 60
-end
-
 local function trim()
 	if not _container then return end
 	local excess = #_rendered - Config.Interface.max_messages
@@ -3577,7 +3597,6 @@ end
 function Render.Render(message: any): GuiObject?
 	if not _container then return nil end
 
-	local stick = nearBottom()
 	_seq += 1
 
 	local ok, result = pcall(buildRow, message, false)
@@ -3600,7 +3619,7 @@ function Render.Render(message: any): GuiObject?
 	row.MouseEnter:Connect(function() Motion.Wake(row) end)
 
 	trim()
-	if stick then Motion.ScrollToBottom(_container, true) end
+	if _stick then Motion.ScrollToBottom(_container, true) end
 
 	Events.MessageRendered:Fire(message, row)
 	return row
@@ -15407,6 +15426,7 @@ mod("Motion", _15, [[
 -- works regardless of the UIListLayout the rows sit in.
 
 local TweenService = game:GetService("TweenService")
+local RunService   = game:GetService("RunService")
 
 local Config = require(script.Parent.Config)
 
@@ -15539,15 +15559,18 @@ function Motion.Pop(obj: GuiObject)
 	end)
 end
 
--- Scroll a list to the bottom, optionally easing.
+-- Scroll a list to the bottom, optionally easing. Waits a frame so the
+-- AutomaticCanvasSize has actually grown to include the new content before we
+-- compute the target, otherwise we'd scroll to a stale (too-short) position.
 function Motion.ScrollToBottom(frame: ScrollingFrame, smooth: boolean?)
-	task.defer(function()
+	task.spawn(function()
+		RunService.Heartbeat:Wait()
 		if not frame.Parent then return end
-		local target = frame.AbsoluteCanvasSize.Y
+		local target = math.max(0, frame.AbsoluteCanvasSize.Y - frame.AbsoluteWindowSize.Y)
 		if smooth and anim().smooth_scroll then
-			Motion.tween(frame, 0.25, { CanvasPosition = Vector2.new(0, target) }, EASE_IO)
+			Motion.tween(frame, 0.2, { CanvasPosition = Vector2.new(0, target) }, EASE_IO)
 		else
-			frame.CanvasPosition = Vector2.new(0, math.huge)
+			frame.CanvasPosition = Vector2.new(0, target)
 		end
 	end)
 end

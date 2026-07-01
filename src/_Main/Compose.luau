@@ -118,6 +118,7 @@ local function renderSuggestions(query: string, items: { any })
 	_suggestions = items
 	_activeQuery = query
 	_selectedIndex = math.clamp(_selectedIndex, 1, math.max(1, #items))
+	local selectedRow: GuiObject? = nil
 
 	for _, child in _autocompleteList:GetChildren() do
 		if child:IsA("GuiObject") then child:Destroy() end
@@ -156,6 +157,7 @@ local function renderSuggestions(query: string, items: { any })
 		row.ZIndex = 52
 		row.Parent = _autocompleteList
 		Skin.corner(row, 4)
+		if i == _selectedIndex then selectedRow = row end
 
 		row.MouseButton1Click:Connect(function()
 			_selectedIndex = i
@@ -203,6 +205,23 @@ local function renderSuggestions(query: string, items: { any })
 	end
 
 	_autocompleteFrame.Visible = true
+
+	-- keep the highlighted row in view while arrow-navigating
+	if selectedRow then
+		task.defer(function()
+			local list = _autocompleteList
+			if not selectedRow or not selectedRow.Parent or not list then return end
+			local rowTop = selectedRow.AbsolutePosition.Y - list.AbsolutePosition.Y + list.CanvasPosition.Y
+			local rowBot = rowTop + selectedRow.AbsoluteSize.Y
+			local viewTop = list.CanvasPosition.Y
+			local viewBot = viewTop + list.AbsoluteWindowSize.Y
+			if rowTop < viewTop then
+				list.CanvasPosition = Vector2.new(0, math.max(0, rowTop - 4))
+			elseif rowBot > viewBot then
+				list.CanvasPosition = Vector2.new(0, rowBot - list.AbsoluteWindowSize.Y + 4)
+			end
+		end)
+	end
 end
 
 -- ─── search sources ──────────────────────────────────────────────────────────

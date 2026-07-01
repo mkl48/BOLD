@@ -172,15 +172,15 @@ local function buildGui()
 
 	-- resize grip (bottom-right): drag to change width + how tall the list can grow
 	if cfg.resizable then
-		local grip = Instance.new("TextButton")
+		local grip = Instance.new("ImageButton")
 		grip.Name = "ResizeGrip"
 		grip.AnchorPoint = Vector2.new(1, 1)
 		grip.Position = UDim2.new(1, -2, 1, -2)
 		grip.Size = UDim2.fromOffset(16, 16)
 		grip.BackgroundTransparency = 1
-		grip.Text = "⤡"
-		grip.TextColor3 = tk("subtext")
-		grip.TextSize = 16
+		grip.Image = "rbxassetid://120944550080981"
+		grip.ImageColor3 = tk("subtext")
+		grip.ImageTransparency = 0.2
 		grip.ZIndex = 10
 		grip.Parent = listWrapper
 
