@@ -8,6 +8,34 @@
 
 local Types = require(script.Parent.Parent.Types)
 
+export type Builder = {
+	Text: (self: Builder, s: string) -> Builder,
+	Bold: (self: Builder, s: string) -> Builder,
+	Italic: (self: Builder, s: string) -> Builder,
+	Underline: (self: Builder, s: string) -> Builder,
+	Strike: (self: Builder, s: string) -> Builder,
+	Code: (self: Builder, s: string) -> Builder,
+	Spoiler: (self: Builder, s: string) -> Builder,
+	Emoji: (self: Builder, name: string) -> Builder,
+	Space: (self: Builder) -> Builder,
+	Line: (self: Builder) -> Builder,
+	Color: (self: Builder, color: Color3 | string, s: string) -> Builder,
+	Link: (self: Builder, label: string, url: string) -> Builder,
+	Mention: (self: Builder, playerOrName: Player | string) -> Builder,
+	Quote: (self: Builder, s: string) -> Builder,
+	Panel: (self: Builder, name: string, args: { [string]: any }?, body: string?) -> Builder,
+	Embed: (self: Builder, embed: Types.Embed) -> Builder,
+	Image: (self: Builder, image_id: string, config: Types.ImageEmbed?) -> Builder,
+	Sticker: (self: Builder, sticker_id: string, config: { size: number?, color: Color3? }?) -> Builder,
+	Kind: (self: Builder, kind: string) -> Builder,
+	Tag: (self: Builder, ...string) -> Builder,
+	Reply: (self: Builder, message: Types.MessageClass) -> Builder,
+	To: (self: Builder, player: Player) -> Builder,
+	Pin: (self: Builder) -> Builder,
+	Payload: (self: Builder) -> any,
+	Send: (self: Builder) -> (),
+}
+
 --[=[
 	@class Builder
 
@@ -36,8 +64,8 @@ local function hexOf(color: Color3): string
 		math.floor(color.B * 255 + 0.5))
 end
 
-function Builder.new(sink: ((payload: any) -> ())?)
-	return setmetatable({
+function Builder.new(sink: ((payload: any) -> ())?): Builder
+	return (setmetatable({
 		_parts = {},
 		_embeds = {},
 		_kind = nil,
@@ -46,7 +74,7 @@ function Builder.new(sink: ((payload: any) -> ())?)
 		_recipient = nil,
 		_pinned = nil,
 		_sink = sink,
-	}, Builder)
+	}, Builder) :: any) :: Builder
 end
 
 local function push(self, s: string)

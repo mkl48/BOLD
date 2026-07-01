@@ -496,9 +496,22 @@ local function buildReplyBar(message: any, lo: number): Frame
 	return outer
 end
 
+-- poll votes ride on the reaction tally under "poll::<index>" keys; they are
+-- rendered by the poll panel, not as normal reaction pills.
+local function isPollKey(k: string): boolean
+	return k:sub(1, 6) == "poll::"
+end
+
 local function buildReactions(message: any, lo: number): Frame?
 	local reactions = message.reactions
-	if not reactions or next(reactions) == nil then return nil end
+	if not reactions then return nil end
+
+	-- any non-poll reactions to show?
+	local hasAny = false
+	for k in reactions do
+		if not isPollKey(k) then hasAny = true; break end
+	end
+	if not hasAny then return nil end
 
 	local row = Instance.new("Frame")
 	row.AutomaticSize = Enum.AutomaticSize.XY
@@ -510,6 +523,7 @@ local function buildReactions(message: any, lo: number): Frame?
 
 	local uid = LocalPlayer and LocalPlayer.UserId
 	for emoji, data in reactions do
+		if isPollKey(emoji) then continue end
 		local mine = uid and table.find(data.users, uid) ~= nil
 		local pill = Instance.new("TextButton")
 		pill.AutomaticSize = Enum.AutomaticSize.X

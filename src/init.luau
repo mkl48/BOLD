@@ -170,27 +170,74 @@ local function registerBuiltinPanels(Interface)
 		q.LayoutOrder = 0
 		q.Parent = frame
 
+		local reactions = message.reactions or {}
+		local uid = Players.LocalPlayer and Players.LocalPlayer.UserId
+
+		-- total votes across every option, for the proportional bars
+		local total = 0
+		for key, data in reactions do
+			if key:sub(1, 6) == "poll::" then total += (data.count or 0) end
+		end
+
 		for i, opt in string.split(tostring(args.options or ""), ",") do
 			local o = opt:gsub("^%s+", ""):gsub("%s+$", "")
 			if o ~= "" then
+				local key = "poll::" .. i
+				local data = reactions[key]
+				local count = data and data.count or 0
+				local mine = data and uid and table.find(data.users, uid) ~= nil
+				local frac = total > 0 and (count / total) or 0
+
 				local b = Instance.new("TextButton")
 				b.AutomaticSize = Enum.AutomaticSize.Y
 				b.Size = UDim2.new(1, 0, 0, 30)
-				b.BackgroundColor3 = Skin.tk("accent")
-				b.BackgroundTransparency = 0.75
+				b.BackgroundColor3 = Skin.tk("reaction_bg")
+				b.BackgroundTransparency = 0.3
 				b.BorderSizePixel = 0
-				b.Text = o
-				b.Font = Skin.tk("font")
-				b.TextSize = Skin.density().text_size - 1
-				b.TextColor3 = Skin.tk("text")
-				b.TextXAlignment = Enum.TextXAlignment.Left
+				b.Text = ""
+				b.AutoButtonColor = false
 				b.LayoutOrder = i
 				b.ZIndex = 3
 				b.Parent = frame
 				Skin.corner(b, 6)
-				Skin.pad(b, 10, 10, 0, 0)
+
+				-- filled portion showing this option's share of the vote
+				local fill = Instance.new("Frame")
+				fill.Size = UDim2.new(frac, 0, 1, 0)
+				fill.BackgroundColor3 = Skin.tk("accent")
+				fill.BackgroundTransparency = mine and 0.35 or 0.7
+				fill.BorderSizePixel = 0
+				fill.ZIndex = 3
+				fill.Parent = b
+				Skin.corner(fill, 6)
+
+				local label = Instance.new("TextLabel")
+				label.BackgroundTransparency = 1
+				label.Size = UDim2.new(1, -20, 1, 0)
+				label.Position = UDim2.fromOffset(10, 0)
+				label.Text = (mine and "● " or "") .. o
+				label.Font = Skin.tk("font")
+				label.TextSize = Skin.density().text_size - 1
+				label.TextColor3 = Skin.tk("text")
+				label.TextXAlignment = Enum.TextXAlignment.Left
+				label.ZIndex = 4
+				label.Parent = b
+
+				local countLabel = Instance.new("TextLabel")
+				countLabel.AnchorPoint = Vector2.new(1, 0.5)
+				countLabel.Position = UDim2.new(1, -8, 0.5, 0)
+				countLabel.Size = UDim2.fromOffset(40, 20)
+				countLabel.BackgroundTransparency = 1
+				countLabel.Text = tostring(count)
+				countLabel.Font = Skin.tk("font_bold")
+				countLabel.TextSize = Skin.density().text_size - 2
+				countLabel.TextColor3 = Skin.tk("subtext")
+				countLabel.TextXAlignment = Enum.TextXAlignment.Right
+				countLabel.ZIndex = 4
+				countLabel.Parent = b
+
 				b.MouseButton1Click:Connect(function()
-					b.BackgroundTransparency = 0.4
+					Bold.React(message, key) -- server tallies + broadcasts; panel rebuilds
 					Events.EmbedActionFired:Fire("poll:" .. o, message)
 				end)
 			end
@@ -277,7 +324,7 @@ end
 	Returns a fluent [Builder] for assembling a message from markdown + embeds, e.g.
 	`Bold.Compose():Bold("gg"):Mention(plr):Send()`.
 ]=]
-function Bold.Compose()
+function Bold.Compose(): Builder.Builder
 	return Builder.new(Bold._sink)
 end
 
