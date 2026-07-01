@@ -13,7 +13,8 @@ local Substance       = require(_Packages.Substance)
 local Events          = require(_Utility.Events)
 local Hooks           = require(_Utility.Hooks)
 local Config          = require(_Utility.Config)
-local Advise = require(_Utility.Advise)
+local Advise          = require(_Utility.Advise)
+local Social          = require(_Utility.Social)
 local Network         = require(_Main.Network)
 local Interface       = require(_Main.Interface)
 local MsgPattern      = require(_Patterns.Message)
@@ -37,6 +38,9 @@ function Client.Start()
 	Substance.Subscribe(Network.DELIVER_CHANNEL, function(payload)
 		local message = payload.Message
 		if not message then return end
+
+		-- locally ignored author: drop it silently
+		if message.metadata and Social.IsIgnored(message.metadata.author_id) then return end
 
 		-- client-side hard-block backstop: filter on our side too, before parse
 		if Config.Filter.client_backstop and message.content and message.content.raw_text then

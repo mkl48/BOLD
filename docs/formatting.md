@@ -1,5 +1,5 @@
 ---
-sidebar_position: 4
+sidebar_position: 5
 ---
 
 # Formatting & panels
@@ -19,6 +19,7 @@ Bold parses message text into typed elements at render time. Everything below is
 | `{red\|text}` / `{#ff0000\|text}` | coloured text (named or hex) |
 | `[label](url)` | link — fires the `LinkClicked` event |
 | `> quoted` | blockquote |
+| `# Title` | heading (`#`, `##`, `###`) |
 | `:fire:` | emoji |
 | `@Name` | [mention](#mentions) |
 

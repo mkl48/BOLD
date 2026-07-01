@@ -1,5 +1,5 @@
 ---
-sidebar_position: 6
+sidebar_position: 7
 ---
 
 # Customization
@@ -48,6 +48,35 @@ Bold.Configure({
     },
 })
 ```
+
+## Visuals & social
+
+```lua
+Bold.Configure({
+    interface = {
+        backdrop = true,             -- the panel behind the whole list
+        message_background = true,   -- a card behind each message (Discord-ish)
+        collapsible = true,          -- long messages get a Show more/less toggle
+        collapse_lines = 6,
+        open_animation = true,       -- animate the window opening/closing
+        draggable = true,            -- drag by the header/grip
+        resizable = true,            -- resize from the bottom-right grip
+        show_friend_badge = true,    -- a dot next to friends' names
+    },
+})
+```
+
+A single message can carry its own card colour:
+
+```lua
+Bold.Message({
+    content = { raw_text = "VIP joined!" },
+    background = Color3.fromRGB(120, 80, 220),
+    background_transparency = 0.7,
+})
+```
+
+Players hide others locally with `/ignore <player>` (and `/unignore`); ignored users' messages simply don't render for them.
 
 ## Keybinds
 

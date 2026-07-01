@@ -17,6 +17,7 @@ local Skin      = require(_Utility.Skin)
 local Motion    = require(_Utility.Motion)
 local Events    = require(_Utility.Events)
 local ImageWrap = require(_Utility.ImageWrap)
+local Social    = require(_Utility.Social)
 local Parser    = require(_Patterns.Parser)
 local Types     = require(_Main.Parent.Types)
 
@@ -45,12 +46,13 @@ local KIND_STYLE: { [string]: { prefix: string?, text_key: string, bold: boolean
 local KIND_OVERRIDE: { [string]: { bg_key: string?, text_key: string } } = {}
 
 local _container: ScrollingFrame? = nil
-local _registry: { [string]: { message: any, row: GuiObject, order: number, revealed: boolean, grouped: boolean } } = {}
+local _registry: { [string]: { message: any, row: GuiObject, order: number, revealed: boolean, grouped: boolean, collapsed: boolean } } = {}
 local _rendered: { string } = {} -- ids in render order, for trimming
 local _seq = 0
 local _lastAuthorId: number? = nil
 local _lastAuthorTime: number = 0
 local _lastGrouped = false -- grouping decision for the most recent buildRow
+local _lastCollapsed = false -- collapse state for the most recent buildRow
 
 function Render.SetContainer(frame: ScrollingFrame)
 	_container = frame
@@ -63,21 +65,33 @@ local density = Skin.density
 local rgb     = Skin.rgb
 local escape  = Skin.escape
 
+local function parseOptions(): any
+	return {
+		markdown = Config.Parsing.markdown,
+		mentions = Config.Parsing.mentions,
+		emoji    = Config.Parsing.emoji,
+		panels   = Config.Parsing.panels,
+		links    = Config.Parsing.links,
+		player_list = Players:GetPlayers(),
+	}
+end
+
 local function ensureElements(message: any): { any }
 	local c = message.content
 	if not c then return {} end
 	if c.elements and #c.elements > 0 then return c.elements end
 	if c.raw_text and c.raw_text ~= "" then
-		c.elements = Parser.Parse(c.raw_text, {
-			markdown = Config.Parsing.markdown,
-			mentions = Config.Parsing.mentions,
-			emoji    = Config.Parsing.emoji,
-			panels   = Config.Parsing.panels,
-			links    = Config.Parsing.links,
-			player_list = Players:GetPlayers(),
-		})
+		c.elements = Parser.Parse(c.raw_text, parseOptions())
 	end
 	return c.elements or {}
+end
+
+local function firstNLines(raw: string, n: number): string
+	local lines = string.split(raw, "\n")
+	if #lines <= n then return raw end
+	local out = table.create(n)
+	for i = 1, n do out[i] = lines[i] end
+	return table.concat(out, "\n")
 end
 
 -- ─── inline rich text ────────────────────────────────────────────────────────
@@ -172,6 +186,24 @@ local function buildBlockquote(el: any, lo: number): Frame
 	return outer
 end
 
+local function buildHeader(el: any, lo: number): Frame
+	local level = (el.data and el.data.level) or 1
+	local sizes = { [1] = 8, [2] = 5, [3] = 3 }
+	local lbl = Instance.new("TextLabel")
+	lbl.BackgroundTransparency = 1
+	lbl.AutomaticSize = Enum.AutomaticSize.Y
+	lbl.Size = UDim2.new(1, 0, 0, 0)
+	lbl.Font = tk("font_bold")
+	lbl.TextSize = density().text_size + (sizes[level] or 3)
+	lbl.TextColor3 = tk("text")
+	lbl.TextWrapped = true
+	lbl.TextXAlignment = Enum.TextXAlignment.Left
+	lbl.RichText = true
+	lbl.Text = escape(el.content)
+	lbl.LayoutOrder = lo
+	return lbl :: any
+end
+
 local function buildPanelFallback(el: any, lo: number): Frame
 	local outer = Instance.new("Frame")
 	outer.AutomaticSize = Enum.AutomaticSize.Y
@@ -215,7 +247,7 @@ end
 
 -- ─── embeds (ported, lightly tidied) ─────────────────────────────────────────
 
-local function buildEmbed(embed: any, lo: number): Frame?
+local function buildEmbed(embed: any, lo: number, message: any): Frame?
 	if not embed or not embed.type then return nil end
 
 	local outer = Instance.new("Frame")
@@ -354,6 +386,66 @@ local function buildEmbed(embed: any, lo: number): Frame?
 		btn.MouseButton1Click:Connect(function()
 			Events.EmbedActionFired:Fire(embed.action_id, message)
 		end)
+
+	elseif embed.type == "Buttons" then
+		if embed.title and embed.title ~= "" then
+			local t = Instance.new("TextLabel")
+			t.BackgroundTransparency = 1
+			t.Size = UDim2.new(1, 0, 0, 0); t.AutomaticSize = Enum.AutomaticSize.Y
+			t.Text = embed.title; t.Font = tk("font"); t.TextSize = d.text_size - 1
+			t.TextColor3 = tk("text"); t.TextWrapped = true; t.TextXAlignment = Enum.TextXAlignment.Left
+			t.LayoutOrder = iLo; iLo += 1; t.Parent = inner
+		end
+		local btnRow = Instance.new("Frame")
+		btnRow.AutomaticSize = Enum.AutomaticSize.Y
+		btnRow.Size = UDim2.new(1, 0, 0, 0)
+		btnRow.BackgroundTransparency = 1
+		btnRow.LayoutOrder = iLo; iLo += 1
+		btnRow.Parent = inner
+		local rl = Skin.list(btnRow, Enum.FillDirection.Horizontal, 6)
+		rl.Wraps = true
+		for _, b in embed.buttons or {} do
+			local color = (b.style == "danger" and Color3.fromRGB(220, 60, 60))
+				or (b.style == "ghost" and Color3.fromRGB(70, 70, 75))
+				or tk("accent")
+			local bb = Instance.new("TextButton")
+			bb.AutomaticSize = Enum.AutomaticSize.X
+			bb.Size = UDim2.fromOffset(0, 28)
+			bb.BackgroundColor3 = color
+			bb.BorderSizePixel = 0
+			bb.Text = b.text or "Button"
+			bb.Font = tk("font_bold"); bb.TextSize = d.text_size - 2; bb.TextColor3 = Color3.new(1, 1, 1)
+			bb.ZIndex = 3
+			bb.Parent = btnRow
+			Skin.corner(bb, 6); Skin.pad(bb, 10, 10, 0, 0)
+			bb.MouseButton1Click:Connect(function()
+				Events.EmbedActionFired:Fire(b.action_id, message)
+			end)
+		end
+
+	elseif embed.type == "Progress" then
+		if embed.label and embed.label ~= "" then
+			local t = Instance.new("TextLabel")
+			t.BackgroundTransparency = 1
+			t.Size = UDim2.new(1, 0, 0, 0); t.AutomaticSize = Enum.AutomaticSize.Y
+			t.Text = embed.label; t.Font = tk("font"); t.TextSize = d.text_size - 1
+			t.TextColor3 = tk("subtext"); t.TextWrapped = true; t.TextXAlignment = Enum.TextXAlignment.Left
+			t.LayoutOrder = iLo; iLo += 1; t.Parent = inner
+		end
+		local track = Instance.new("Frame")
+		track.Size = UDim2.new(1, 0, 0, 10)
+		track.BackgroundColor3 = Color3.fromRGB(60, 60, 66)
+		track.BackgroundTransparency = 0.2
+		track.BorderSizePixel = 0
+		track.LayoutOrder = iLo; iLo += 1
+		track.Parent = inner
+		Skin.corner(track, 5)
+		local fill = Instance.new("Frame")
+		fill.Size = UDim2.new(math.clamp(embed.value or 0, 0, 1), 0, 1, 0)
+		fill.BackgroundColor3 = embed.color or tk("accent")
+		fill.BorderSizePixel = 0
+		fill.Parent = track
+		Skin.corner(fill, 5)
 	end
 
 	return outer
@@ -580,6 +672,11 @@ local function headerParts(message: any, style: any, grouped: boolean): { string
 	local authorName = (meta and meta.author_name) or (meta and meta.source) or "System"
 	if style.prefix then table.insert(parts, style.prefix) end
 
+	-- friend dot next to the name
+	if cfg.show_friend_badge and meta and Social.IsFriend(meta.author_id) then
+		table.insert(parts, ('<font color="%s">● </font>'):format(rgb(tk("accent"))))
+	end
+
 	if kind == "chat" then
 		local color = Skin.authorColor(meta and meta.author_id, authorName, meta and meta.author_color)
 		table.insert(parts, ('<font color="%s"><b>%s</b></font>: '):format(rgb(color), escape(authorName)))
@@ -594,7 +691,7 @@ end
 
 -- ─── row builder ─────────────────────────────────────────────────────────────
 
-local function buildRow(message: any, revealed: boolean, groupedOverride: boolean?): GuiObject
+local function buildRow(message: any, revealed: boolean, groupedOverride: boolean?, collapsedOverride: boolean?): GuiObject
 	local kind = message.kind or "chat"
 	if Render.Renderers[kind] then
 		return Render.Renderers[kind](message, Config.Interface.theme)
@@ -664,14 +761,26 @@ local function buildRow(message: any, revealed: boolean, groupedOverride: boolea
 		buildReplyBar(message, lo).Parent = row; lo += 1
 	end
 
+	-- long-message collapse: start collapsed, show a limited view + a toggle
+	local raw = (message.content and message.content.raw_text) or ""
+	local lineCount = raw == "" and 0 or (select(2, raw:gsub("\n", "")) + 1)
+	local collapsibleMsg = cfg.collapsible and lineCount > (cfg.collapse_lines or 6)
+	local isCollapsed = if collapsedOverride ~= nil then collapsedOverride else collapsibleMsg
+	_lastCollapsed = isCollapsed
+
 	-- split elements into inline runs and block frames
-	local elements = ensureElements(message)
+	local elements
+	if collapsibleMsg and isCollapsed then
+		elements = Parser.Parse(firstNLines(raw, cfg.collapse_lines or 6), parseOptions())
+	else
+		elements = ensureElements(message)
+	end
 	local style_text_key = (override and override.text_key) or style.text_key
 
 	local blocks: { { kind: string, data: any } } = {}
 	local cur: { any } = {}
 	for _, el in elements do
-		if el.type == "panel" or el.type == "blockquote" then
+		if el.type == "panel" or el.type == "blockquote" or el.type == "header" then
 			if #cur > 0 then table.insert(blocks, { kind = "inline", data = cur }); cur = {} end
 			table.insert(blocks, { kind = "block", data = el })
 		else
@@ -715,6 +824,8 @@ local function buildRow(message: any, revealed: boolean, groupedOverride: boolea
 			local el = block.data
 			if el.type == "blockquote" then
 				buildBlockquote(el, lo).Parent = row; lo += 1
+			elseif el.type == "header" then
+				buildHeader(el, lo).Parent = row; lo += 1
 			elseif el.type == "panel" then
 				buildPanel(el, message, lo).Parent = row; lo += 1
 			end
@@ -724,6 +835,33 @@ local function buildRow(message: any, revealed: boolean, groupedOverride: boolea
 	-- header-only line when there is no inline content (e.g. embed/panel only)
 	if not headerUsed and #hParts > 0 then
 		inlineLabel(table.concat(hParts))
+	end
+
+	-- collapse/expand toggle for long messages
+	if collapsibleMsg then
+		local toggle = Instance.new("TextButton")
+		toggle.Name = "CollapseToggle"
+		toggle.AutomaticSize = Enum.AutomaticSize.Y
+		toggle.Size = UDim2.new(1, 0, 0, 0)
+		toggle.BackgroundTransparency = 1
+		toggle.Font = tk("font_bold")
+		toggle.TextSize = density().text_size - 2
+		toggle.TextColor3 = tk("link_text")
+		toggle.TextXAlignment = Enum.TextXAlignment.Left
+		toggle.AutoButtonColor = false
+		toggle.Text = isCollapsed
+			and ("Show more (" .. (lineCount - (cfg.collapse_lines or 6)) .. " more lines) ▾")
+			or "Show less ▴"
+		toggle.ZIndex = 3
+		toggle.LayoutOrder = lo; lo += 1
+		toggle.Parent = row
+		toggle.MouseButton1Click:Connect(function()
+			local entry = _registry[message.metadata.id]
+			if entry then
+				entry.collapsed = not isCollapsed
+				Render.RebuildRow(message.metadata.id)
+			end
+		end)
 	end
 
 	-- interactive overlay ONLY when there's something to click (spoilers/mentions/
@@ -763,7 +901,7 @@ local function buildRow(message: any, revealed: boolean, groupedOverride: boolea
 
 	if message.content and message.content.embeds then
 		for _, embed in message.content.embeds do
-			local ef = buildEmbed(embed, lo)
+			local ef = buildEmbed(embed, lo, message)
 			if ef then ef.Parent = row; lo += 1 end
 		end
 	end
@@ -830,7 +968,7 @@ function Render.RebuildRow(id: string)
 	local old = entry.row
 	local order = entry.order
 	-- reuse the original grouping decision so a rebuild can't drop the header
-	local newRow = buildRow(entry.message, entry.revealed, entry.grouped)
+	local newRow = buildRow(entry.message, entry.revealed, entry.grouped, entry.collapsed)
 	newRow.LayoutOrder = order
 	newRow.Parent = _container
 	entry.row = newRow
@@ -853,7 +991,7 @@ function Render.Render(message: any): GuiObject?
 
 	local id = message.metadata and message.metadata.id
 	if id then
-		_registry[id] = { message = message, row = row, order = _seq, revealed = false, grouped = _lastGrouped }
+		_registry[id] = { message = message, row = row, order = _seq, revealed = false, grouped = _lastGrouped, collapsed = _lastCollapsed }
 		table.insert(_rendered, id)
 	end
 

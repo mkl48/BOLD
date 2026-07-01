@@ -184,6 +184,58 @@ local function registerBuiltinPanels(Interface)
 		body.Parent = frame
 		return frame
 	end)
+
+	Interface.RegisterPanel("poll", function(args, message)
+		local frame = Instance.new("Frame")
+		frame.AutomaticSize = Enum.AutomaticSize.Y
+		frame.Size = UDim2.new(1, 0, 0, 0)
+		frame.BackgroundColor3 = Skin.tk("reaction_bg")
+		frame.BackgroundTransparency = 0.3
+		frame.BorderSizePixel = 0
+		Skin.corner(frame, 8)
+		Skin.pad(frame, 10, 10, 8, 8)
+		Skin.list(frame, nil, 6)
+
+		local q = Instance.new("TextLabel")
+		q.AutomaticSize = Enum.AutomaticSize.Y
+		q.Size = UDim2.new(1, 0, 0, 0)
+		q.BackgroundTransparency = 1
+		q.Text = "📊 " .. tostring(args.question or "Poll")
+		q.Font = Skin.tk("font_bold")
+		q.TextSize = Skin.density().text_size
+		q.TextColor3 = Skin.tk("text")
+		q.TextXAlignment = Enum.TextXAlignment.Left
+		q.TextWrapped = true
+		q.LayoutOrder = 0
+		q.Parent = frame
+
+		for i, opt in string.split(tostring(args.options or ""), ",") do
+			local o = opt:gsub("^%s+", ""):gsub("%s+$", "")
+			if o ~= "" then
+				local b = Instance.new("TextButton")
+				b.AutomaticSize = Enum.AutomaticSize.Y
+				b.Size = UDim2.new(1, 0, 0, 30)
+				b.BackgroundColor3 = Skin.tk("accent")
+				b.BackgroundTransparency = 0.75
+				b.BorderSizePixel = 0
+				b.Text = o
+				b.Font = Skin.tk("font")
+				b.TextSize = Skin.density().text_size - 1
+				b.TextColor3 = Skin.tk("text")
+				b.TextXAlignment = Enum.TextXAlignment.Left
+				b.LayoutOrder = i
+				b.ZIndex = 3
+				b.Parent = frame
+				Skin.corner(b, 6)
+				Skin.pad(b, 10, 10, 0, 0)
+				b.MouseButton1Click:Connect(function()
+					b.BackgroundTransparency = 0.4
+					Events.EmbedActionFired:Fire("poll:" .. o, message)
+				end)
+			end
+		end
+		return frame
+	end)
 end
 
 --[=[
@@ -342,6 +394,26 @@ function Bold.Action(action_id: string, config: {
 	return e :: any
 end
 
+--[=[
+	@within Bold
+	Builds a row-of-buttons embed. Handle clicks with [Bold.OnAction].
+]=]
+function Bold.Buttons(buttons: { Types.ButtonSpec }, config: { title: string?, color: Color3? }?): Types.ButtonsEmbed
+	local e = config and table.clone(config) or {}
+	e.type = "Buttons"; e.buttons = buttons
+	return e :: any
+end
+
+--[=[
+	@within Bold
+	Builds a progress-bar embed. `value` is 0..1.
+]=]
+function Bold.Progress(value: number, config: { label: string?, color: Color3? }?): Types.ProgressEmbed
+	local e = config and table.clone(config) or {}
+	e.type = "Progress"; e.value = value
+	return e :: any
+end
+
 -- ─── Events / Hooks ──────────────────────────────────────────────────────────
 
 --[=[
@@ -382,6 +454,15 @@ end
 ]=]
 function Bold.OnMentioned(fn: (message: any) -> ()): RBXScriptConnection
 	return Events.Mentioned:Connect(fn)
+end
+
+--[=[
+	@within Bold
+	Fires when an Action/Buttons embed button (or a poll option) is clicked.
+	`action_id` is the id you gave the button; poll options fire `"poll:<option>"`.
+]=]
+function Bold.OnAction(fn: (action_id: string, message: any?) -> ()): RBXScriptConnection
+	return Events.EmbedActionFired:Connect(fn)
 end
 
 -- Server / client message guard: return false to drop.
@@ -660,6 +741,7 @@ export type ElementType =
 	| "color"
 	| "link"
 	| "blockquote"
+	| "header"
 	| "panel"
 
 export type Element = {
@@ -673,6 +755,7 @@ export type Element = {
 		emoji_asset: string?,
 		link_url: string?,
 		color: Color3?,
+		level: number?, -- header level (1-3)
 		-- panel elements
 		panel_name: string?,
 		panel_args: { [string]: any }?,
@@ -723,7 +806,25 @@ export type ActionEmbed = BaseEmbed & {
 	style: ("primary" | "danger" | "ghost")?,
 }
 
-export type Embed = ImageEmbed | GifEmbed | StickerEmbed | RichTextEmbed | ActionEmbed
+export type ButtonSpec = {
+	text: string,
+	action_id: string,
+	style: ("primary" | "danger" | "ghost")?,
+}
+
+export type ButtonsEmbed = BaseEmbed & {
+	type: "Buttons",
+	title: string?,
+	buttons: { ButtonSpec },
+}
+
+export type ProgressEmbed = BaseEmbed & {
+	type: "Progress",
+	value: number, -- 0..1
+	label: string?,
+}
+
+export type Embed = ImageEmbed | GifEmbed | StickerEmbed | RichTextEmbed | ActionEmbed | ButtonsEmbed | ProgressEmbed
 
 -- ─── Message ─────────────────────────────────────────────────────────────────
 
@@ -945,8 +1046,10 @@ export type ImageAsset = {
 export type CommandSpec = {
 	description: string?,
 	args: string?,
+	-- when true, the first argument autocompletes to players (e.g. /incog, /ignore)
+	player_arg: boolean?,
 	-- handler runs on the client; return a compose payload to send, or nil for a
-	-- purely local command. ctx exposes { text, args, raw, interface }.
+	-- purely local command. ctx exposes { args, rest, raw, localPlayer, actions }.
 	handler: (ctx: any) -> any?,
 	server: boolean?,
 }
@@ -1294,7 +1397,8 @@ local Substance       = require(_Packages.Substance)
 local Events          = require(_Utility.Events)
 local Hooks           = require(_Utility.Hooks)
 local Config          = require(_Utility.Config)
-local Advise = require(_Utility.Advise)
+local Advise          = require(_Utility.Advise)
+local Social          = require(_Utility.Social)
 local Network         = require(_Main.Network)
 local Interface       = require(_Main.Interface)
 local MsgPattern      = require(_Patterns.Message)
@@ -1318,6 +1422,9 @@ function Client.Start()
 	Substance.Subscribe(Network.DELIVER_CHANNEL, function(payload)
 		local message = payload.Message
 		if not message then return end
+
+		-- locally ignored author: drop it silently
+		if message.metadata and Social.IsIgnored(message.metadata.author_id) then return end
 
 		-- client-side hard-block backstop: filter on our side too, before parse
 		if Config.Filter.client_backstop and message.content and message.content.raw_text then
@@ -1406,6 +1513,7 @@ local _Patterns = _Main.Parent._Patterns
 local Config      = require(_Utility.Config)
 local Skin        = require(_Utility.Skin)
 local Keys        = require(_Utility.Keys)
+local Social      = require(_Utility.Social)
 local ImageWrap   = require(_Utility.ImageWrap)
 local Parser      = require(_Patterns.Parser)
 local ImageSearch = require(_Patterns.ImageSearch)
@@ -1661,6 +1769,26 @@ local function runCommandSearch(query: string, token: number)
 	renderSuggestions(query, items)
 end
 
+-- player autocomplete for a command argument (e.g. /incog, /ignore) -- inserts a
+-- plain name (+ space), not an @mention
+local function runPlayerArgSearch(query: string, token: number)
+	local items = {}
+	local lower = query:lower()
+	for _, plr in Players:GetPlayers() do
+		if query == "" or plr.Name:lower():sub(1, #lower) == lower or plr.DisplayName:lower():sub(1, #lower) == lower then
+			table.insert(items, {
+				type = "user",
+				name = plr.DisplayName ~= plr.Name and (plr.DisplayName .. "  @" .. plr.Name) or plr.Name,
+				icon = "rbxthumb://type=AvatarHeadShot&id=" .. plr.UserId .. "&w=48&h=48",
+				source = "Players",
+				insertText = plr.Name .. " ",
+			})
+		end
+	end
+	if token ~= _searchToken then return end
+	renderSuggestions(query, items)
+end
+
 -- ─── reply targeting ─────────────────────────────────────────────────────────
 
 local function clearReply()
@@ -1820,6 +1948,24 @@ local function submit()
 				clear = Render.Clear,
 				system = Render.SystemMessage,
 				resolvePlayer = resolvePlayer,
+				ignore = function(name: string)
+					local uid = Social.ResolveUserId(name)
+					if uid then
+						Social.Ignore(uid)
+						Render.SystemMessage("Ignoring " .. name .. " — you won't see their messages.")
+					else
+						Render.SystemMessage("No player found matching '" .. name .. "'")
+					end
+				end,
+				unignore = function(name: string)
+					local uid = Social.ResolveUserId(name)
+					if uid then
+						Social.Unignore(uid)
+						Render.SystemMessage("No longer ignoring " .. name .. ".")
+					else
+						Render.SystemMessage("No player found matching '" .. name .. "'")
+					end
+				end,
 			},
 		})
 		if result.kind == "send" and result.payload then
@@ -1874,6 +2020,25 @@ local function onCursorMoved()
 	if cursor == -1 then return end
 
 	local preceding = text:sub(1, cursor - 1)
+
+	-- command-argument player autocomplete, e.g. "/incog Bo" -> players
+	local cmdName, argPartial = preceding:match("^/([%w_]+)%s+(%S*)$")
+	if cmdName then
+		local spec = Commands.Get(cmdName)
+		if spec and spec.player_arg then
+			_activeTrigger = "cmdarg"
+			_triggerStart = #preceding - #argPartial + 1
+			_searchToken += 1
+			local token = _searchToken
+			task.delay(AUTOCOMPLETE_DEBOUNCE, function()
+				if token ~= _searchToken then return end
+				if not _inputBox or not _inputBox:IsFocused() then return end
+				runPlayerArgSearch(argPartial, token)
+			end)
+			return
+		end
+	end
+
 	local matchStart, _e, trigger, query = preceding:find("([@:/])([%w_]*)$")
 
 	-- '/' only triggers commands at the very start of the field
@@ -2368,6 +2533,7 @@ local Skin      = require(_Utility.Skin)
 local Motion    = require(_Utility.Motion)
 local Events    = require(_Utility.Events)
 local ImageWrap = require(_Utility.ImageWrap)
+local Social    = require(_Utility.Social)
 local Parser    = require(_Patterns.Parser)
 local Types     = require(_Main.Parent.Types)
 
@@ -2396,12 +2562,13 @@ local KIND_STYLE: { [string]: { prefix: string?, text_key: string, bold: boolean
 local KIND_OVERRIDE: { [string]: { bg_key: string?, text_key: string } } = {}
 
 local _container: ScrollingFrame? = nil
-local _registry: { [string]: { message: any, row: GuiObject, order: number, revealed: boolean, grouped: boolean } } = {}
+local _registry: { [string]: { message: any, row: GuiObject, order: number, revealed: boolean, grouped: boolean, collapsed: boolean } } = {}
 local _rendered: { string } = {} -- ids in render order, for trimming
 local _seq = 0
 local _lastAuthorId: number? = nil
 local _lastAuthorTime: number = 0
 local _lastGrouped = false -- grouping decision for the most recent buildRow
+local _lastCollapsed = false -- collapse state for the most recent buildRow
 
 function Render.SetContainer(frame: ScrollingFrame)
 	_container = frame
@@ -2414,21 +2581,33 @@ local density = Skin.density
 local rgb     = Skin.rgb
 local escape  = Skin.escape
 
+local function parseOptions(): any
+	return {
+		markdown = Config.Parsing.markdown,
+		mentions = Config.Parsing.mentions,
+		emoji    = Config.Parsing.emoji,
+		panels   = Config.Parsing.panels,
+		links    = Config.Parsing.links,
+		player_list = Players:GetPlayers(),
+	}
+end
+
 local function ensureElements(message: any): { any }
 	local c = message.content
 	if not c then return {} end
 	if c.elements and #c.elements > 0 then return c.elements end
 	if c.raw_text and c.raw_text ~= "" then
-		c.elements = Parser.Parse(c.raw_text, {
-			markdown = Config.Parsing.markdown,
-			mentions = Config.Parsing.mentions,
-			emoji    = Config.Parsing.emoji,
-			panels   = Config.Parsing.panels,
-			links    = Config.Parsing.links,
-			player_list = Players:GetPlayers(),
-		})
+		c.elements = Parser.Parse(c.raw_text, parseOptions())
 	end
 	return c.elements or {}
+end
+
+local function firstNLines(raw: string, n: number): string
+	local lines = string.split(raw, "\n")
+	if #lines <= n then return raw end
+	local out = table.create(n)
+	for i = 1, n do out[i] = lines[i] end
+	return table.concat(out, "\n")
 end
 
 -- ─── inline rich text ────────────────────────────────────────────────────────
@@ -2523,6 +2702,24 @@ local function buildBlockquote(el: any, lo: number): Frame
 	return outer
 end
 
+local function buildHeader(el: any, lo: number): Frame
+	local level = (el.data and el.data.level) or 1
+	local sizes = { [1] = 8, [2] = 5, [3] = 3 }
+	local lbl = Instance.new("TextLabel")
+	lbl.BackgroundTransparency = 1
+	lbl.AutomaticSize = Enum.AutomaticSize.Y
+	lbl.Size = UDim2.new(1, 0, 0, 0)
+	lbl.Font = tk("font_bold")
+	lbl.TextSize = density().text_size + (sizes[level] or 3)
+	lbl.TextColor3 = tk("text")
+	lbl.TextWrapped = true
+	lbl.TextXAlignment = Enum.TextXAlignment.Left
+	lbl.RichText = true
+	lbl.Text = escape(el.content)
+	lbl.LayoutOrder = lo
+	return lbl :: any
+end
+
 local function buildPanelFallback(el: any, lo: number): Frame
 	local outer = Instance.new("Frame")
 	outer.AutomaticSize = Enum.AutomaticSize.Y
@@ -2566,7 +2763,7 @@ end
 
 -- ─── embeds (ported, lightly tidied) ─────────────────────────────────────────
 
-local function buildEmbed(embed: any, lo: number): Frame?
+local function buildEmbed(embed: any, lo: number, message: any): Frame?
 	if not embed or not embed.type then return nil end
 
 	local outer = Instance.new("Frame")
@@ -2705,6 +2902,66 @@ local function buildEmbed(embed: any, lo: number): Frame?
 		btn.MouseButton1Click:Connect(function()
 			Events.EmbedActionFired:Fire(embed.action_id, message)
 		end)
+
+	elseif embed.type == "Buttons" then
+		if embed.title and embed.title ~= "" then
+			local t = Instance.new("TextLabel")
+			t.BackgroundTransparency = 1
+			t.Size = UDim2.new(1, 0, 0, 0); t.AutomaticSize = Enum.AutomaticSize.Y
+			t.Text = embed.title; t.Font = tk("font"); t.TextSize = d.text_size - 1
+			t.TextColor3 = tk("text"); t.TextWrapped = true; t.TextXAlignment = Enum.TextXAlignment.Left
+			t.LayoutOrder = iLo; iLo += 1; t.Parent = inner
+		end
+		local btnRow = Instance.new("Frame")
+		btnRow.AutomaticSize = Enum.AutomaticSize.Y
+		btnRow.Size = UDim2.new(1, 0, 0, 0)
+		btnRow.BackgroundTransparency = 1
+		btnRow.LayoutOrder = iLo; iLo += 1
+		btnRow.Parent = inner
+		local rl = Skin.list(btnRow, Enum.FillDirection.Horizontal, 6)
+		rl.Wraps = true
+		for _, b in embed.buttons or {} do
+			local color = (b.style == "danger" and Color3.fromRGB(220, 60, 60))
+				or (b.style == "ghost" and Color3.fromRGB(70, 70, 75))
+				or tk("accent")
+			local bb = Instance.new("TextButton")
+			bb.AutomaticSize = Enum.AutomaticSize.X
+			bb.Size = UDim2.fromOffset(0, 28)
+			bb.BackgroundColor3 = color
+			bb.BorderSizePixel = 0
+			bb.Text = b.text or "Button"
+			bb.Font = tk("font_bold"); bb.TextSize = d.text_size - 2; bb.TextColor3 = Color3.new(1, 1, 1)
+			bb.ZIndex = 3
+			bb.Parent = btnRow
+			Skin.corner(bb, 6); Skin.pad(bb, 10, 10, 0, 0)
+			bb.MouseButton1Click:Connect(function()
+				Events.EmbedActionFired:Fire(b.action_id, message)
+			end)
+		end
+
+	elseif embed.type == "Progress" then
+		if embed.label and embed.label ~= "" then
+			local t = Instance.new("TextLabel")
+			t.BackgroundTransparency = 1
+			t.Size = UDim2.new(1, 0, 0, 0); t.AutomaticSize = Enum.AutomaticSize.Y
+			t.Text = embed.label; t.Font = tk("font"); t.TextSize = d.text_size - 1
+			t.TextColor3 = tk("subtext"); t.TextWrapped = true; t.TextXAlignment = Enum.TextXAlignment.Left
+			t.LayoutOrder = iLo; iLo += 1; t.Parent = inner
+		end
+		local track = Instance.new("Frame")
+		track.Size = UDim2.new(1, 0, 0, 10)
+		track.BackgroundColor3 = Color3.fromRGB(60, 60, 66)
+		track.BackgroundTransparency = 0.2
+		track.BorderSizePixel = 0
+		track.LayoutOrder = iLo; iLo += 1
+		track.Parent = inner
+		Skin.corner(track, 5)
+		local fill = Instance.new("Frame")
+		fill.Size = UDim2.new(math.clamp(embed.value or 0, 0, 1), 0, 1, 0)
+		fill.BackgroundColor3 = embed.color or tk("accent")
+		fill.BorderSizePixel = 0
+		fill.Parent = track
+		Skin.corner(fill, 5)
 	end
 
 	return outer
@@ -2931,6 +3188,11 @@ local function headerParts(message: any, style: any, grouped: boolean): { string
 	local authorName = (meta and meta.author_name) or (meta and meta.source) or "System"
 	if style.prefix then table.insert(parts, style.prefix) end
 
+	-- friend dot next to the name
+	if cfg.show_friend_badge and meta and Social.IsFriend(meta.author_id) then
+		table.insert(parts, ('<font color="%s">● </font>'):format(rgb(tk("accent"))))
+	end
+
 	if kind == "chat" then
 		local color = Skin.authorColor(meta and meta.author_id, authorName, meta and meta.author_color)
 		table.insert(parts, ('<font color="%s"><b>%s</b></font>: '):format(rgb(color), escape(authorName)))
@@ -2945,7 +3207,7 @@ end
 
 -- ─── row builder ─────────────────────────────────────────────────────────────
 
-local function buildRow(message: any, revealed: boolean, groupedOverride: boolean?): GuiObject
+local function buildRow(message: any, revealed: boolean, groupedOverride: boolean?, collapsedOverride: boolean?): GuiObject
 	local kind = message.kind or "chat"
 	if Render.Renderers[kind] then
 		return Render.Renderers[kind](message, Config.Interface.theme)
@@ -3015,14 +3277,26 @@ local function buildRow(message: any, revealed: boolean, groupedOverride: boolea
 		buildReplyBar(message, lo).Parent = row; lo += 1
 	end
 
+	-- long-message collapse: start collapsed, show a limited view + a toggle
+	local raw = (message.content and message.content.raw_text) or ""
+	local lineCount = raw == "" and 0 or (select(2, raw:gsub("\n", "")) + 1)
+	local collapsibleMsg = cfg.collapsible and lineCount > (cfg.collapse_lines or 6)
+	local isCollapsed = if collapsedOverride ~= nil then collapsedOverride else collapsibleMsg
+	_lastCollapsed = isCollapsed
+
 	-- split elements into inline runs and block frames
-	local elements = ensureElements(message)
+	local elements
+	if collapsibleMsg and isCollapsed then
+		elements = Parser.Parse(firstNLines(raw, cfg.collapse_lines or 6), parseOptions())
+	else
+		elements = ensureElements(message)
+	end
 	local style_text_key = (override and override.text_key) or style.text_key
 
 	local blocks: { { kind: string, data: any } } = {}
 	local cur: { any } = {}
 	for _, el in elements do
-		if el.type == "panel" or el.type == "blockquote" then
+		if el.type == "panel" or el.type == "blockquote" or el.type == "header" then
 			if #cur > 0 then table.insert(blocks, { kind = "inline", data = cur }); cur = {} end
 			table.insert(blocks, { kind = "block", data = el })
 		else
@@ -3066,6 +3340,8 @@ local function buildRow(message: any, revealed: boolean, groupedOverride: boolea
 			local el = block.data
 			if el.type == "blockquote" then
 				buildBlockquote(el, lo).Parent = row; lo += 1
+			elseif el.type == "header" then
+				buildHeader(el, lo).Parent = row; lo += 1
 			elseif el.type == "panel" then
 				buildPanel(el, message, lo).Parent = row; lo += 1
 			end
@@ -3075,6 +3351,33 @@ local function buildRow(message: any, revealed: boolean, groupedOverride: boolea
 	-- header-only line when there is no inline content (e.g. embed/panel only)
 	if not headerUsed and #hParts > 0 then
 		inlineLabel(table.concat(hParts))
+	end
+
+	-- collapse/expand toggle for long messages
+	if collapsibleMsg then
+		local toggle = Instance.new("TextButton")
+		toggle.Name = "CollapseToggle"
+		toggle.AutomaticSize = Enum.AutomaticSize.Y
+		toggle.Size = UDim2.new(1, 0, 0, 0)
+		toggle.BackgroundTransparency = 1
+		toggle.Font = tk("font_bold")
+		toggle.TextSize = density().text_size - 2
+		toggle.TextColor3 = tk("link_text")
+		toggle.TextXAlignment = Enum.TextXAlignment.Left
+		toggle.AutoButtonColor = false
+		toggle.Text = isCollapsed
+			and ("Show more (" .. (lineCount - (cfg.collapse_lines or 6)) .. " more lines) ▾")
+			or "Show less ▴"
+		toggle.ZIndex = 3
+		toggle.LayoutOrder = lo; lo += 1
+		toggle.Parent = row
+		toggle.MouseButton1Click:Connect(function()
+			local entry = _registry[message.metadata.id]
+			if entry then
+				entry.collapsed = not isCollapsed
+				Render.RebuildRow(message.metadata.id)
+			end
+		end)
 	end
 
 	-- interactive overlay ONLY when there's something to click (spoilers/mentions/
@@ -3114,7 +3417,7 @@ local function buildRow(message: any, revealed: boolean, groupedOverride: boolea
 
 	if message.content and message.content.embeds then
 		for _, embed in message.content.embeds do
-			local ef = buildEmbed(embed, lo)
+			local ef = buildEmbed(embed, lo, message)
 			if ef then ef.Parent = row; lo += 1 end
 		end
 	end
@@ -3181,7 +3484,7 @@ function Render.RebuildRow(id: string)
 	local old = entry.row
 	local order = entry.order
 	-- reuse the original grouping decision so a rebuild can't drop the header
-	local newRow = buildRow(entry.message, entry.revealed, entry.grouped)
+	local newRow = buildRow(entry.message, entry.revealed, entry.grouped, entry.collapsed)
 	newRow.LayoutOrder = order
 	newRow.Parent = _container
 	entry.row = newRow
@@ -3204,7 +3507,7 @@ function Render.Render(message: any): GuiObject?
 
 	local id = message.metadata and message.metadata.id
 	if id then
-		_registry[id] = { message = message, row = row, order = _seq, revealed = false, grouped = _lastGrouped }
+		_registry[id] = { message = message, row = row, order = _seq, revealed = false, grouped = _lastGrouped, collapsed = _lastCollapsed }
 		table.insert(_rendered, id)
 	end
 
@@ -13481,6 +13784,7 @@ Commands.Register("help", {
 Commands.Register("incog", {
 	description = "Privately message a player",
 	args = "<player> <message>",
+	player_arg = true,
 	handler = function(ctx)
 		local targetName = ctx.args[1]
 		if not targetName then
@@ -13502,6 +13806,57 @@ Commands.Register("incog", {
 		end
 
 		return { text = message, kind = "whisper", recipient = player }
+	end,
+})
+
+Commands.Register("poll", {
+	description = "Start a poll",
+	args = "<question> | <option> | <option> …",
+	handler = function(ctx)
+		local parts = string.split(ctx.rest, "|")
+		local function trim(s: string): string
+			return (s:gsub("^%s+", ""):gsub("%s+$", ""))
+		end
+		local question = parts[1] and trim(parts[1]) or ""
+		if question == "" then
+			ctx.actions.system("Usage: /poll Question | Option 1 | Option 2")
+			return nil
+		end
+		local options = {}
+		for i = 2, #parts do
+			local o = trim(parts[i])
+			if o ~= "" then table.insert(options, o) end
+		end
+		if #options < 2 then
+			ctx.actions.system("A poll needs at least two options.")
+			return nil
+		end
+		local fence = (':::poll question="%s" options="%s"\n:::'):format(question, table.concat(options, ","))
+		return { text = fence }
+	end,
+})
+
+Commands.Register("ignore", {
+	description = "Hide a player's messages for you",
+	args = "<player>",
+	player_arg = true,
+	handler = function(ctx)
+		local name = ctx.args[1]
+		if not name then ctx.actions.system("Usage: /ignore <player>"); return nil end
+		ctx.actions.ignore(name)
+		return nil
+	end,
+})
+
+Commands.Register("unignore", {
+	description = "Stop hiding a player's messages",
+	args = "<player>",
+	player_arg = true,
+	handler = function(ctx)
+		local name = ctx.args[1]
+		if not name then ctx.actions.system("Usage: /unignore <player>"); return nil end
+		ctx.actions.unignore(name)
+		return nil
 	end,
 })
 
@@ -14032,6 +14387,14 @@ function Parser.Parse(raw: string?, opts: ParseOptions?): { Token }
 				},
 			})
 			i = j + 1
+			continue
+		end
+
+		-- header: # / ## / ### text
+		local hashes, htext = line:match("^(#+)%s+(.*)$")
+		if hashes and #hashes <= 3 and htext ~= "" then
+			table.insert(tokens, { type = "header", content = htext, data = { level = #hashes } })
+			i += 1
 			continue
 		end
 
@@ -15182,6 +15545,79 @@ end
 
 return Skin
 ]])
+mod("Social", _15, [[
+-- Bold
+-- _Utility/Social
+-- Plinko Labs
+--
+-- Client-side social state: a cached friend lookup and a local ignore list.
+-- Roblox does not let a game reliably read a player's block list, so "blocked"
+-- is a Bold-side /ignore that hides someone's messages for you.
 
-print("[Bold] installed 67 modules under ReplicatedStorage.Bold")
+local Players = game:GetService("Players")
+
+local LocalPlayer = Players.LocalPlayer
+
+local Social = {}
+
+local _friendCache: { [number]: boolean } = {}
+local _ignored: { [number]: boolean } = {}
+
+-- Non-yielding: returns the cached answer (false until an async check resolves).
+function Social.IsFriend(userId: number?): boolean
+	if not userId or not LocalPlayer or userId == LocalPlayer.UserId then
+		return false
+	end
+	local cached = _friendCache[userId]
+	if cached ~= nil then
+		return cached
+	end
+	_friendCache[userId] = false
+	task.spawn(function()
+		local ok, res = pcall(function()
+			return LocalPlayer:IsFriendsWith(userId)
+		end)
+		if ok then _friendCache[userId] = res end
+	end)
+	return false
+end
+
+function Social.Ignore(userId: number?)
+	if userId then _ignored[userId] = true end
+end
+
+function Social.Unignore(userId: number?)
+	if userId then _ignored[userId] = nil end
+end
+
+function Social.IsIgnored(userId: number?): boolean
+	return userId ~= nil and _ignored[userId] == true
+end
+
+function Social.Ignored(): { number }
+	local out = {}
+	for uid in _ignored do table.insert(out, uid) end
+	return out
+end
+
+-- Resolve a name (or exact/prefix) to a userId among current players.
+function Social.ResolveUserId(name: string): (number?, string?)
+	local lower = name:lower()
+	for _, p in Players:GetPlayers() do
+		if p.Name:lower() == lower or p.DisplayName:lower() == lower then
+			return p.UserId, p.Name
+		end
+	end
+	for _, p in Players:GetPlayers() do
+		if p.Name:lower():sub(1, #lower) == lower then
+			return p.UserId, p.Name
+		end
+	end
+	return nil, nil
+end
+
+return Social
+]])
+
+print("[Bold] installed 68 modules under ReplicatedStorage.Bold")
 return true

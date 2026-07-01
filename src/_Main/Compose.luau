@@ -15,6 +15,7 @@ local _Patterns = _Main.Parent._Patterns
 local Config      = require(_Utility.Config)
 local Skin        = require(_Utility.Skin)
 local Keys        = require(_Utility.Keys)
+local Social      = require(_Utility.Social)
 local ImageWrap   = require(_Utility.ImageWrap)
 local Parser      = require(_Patterns.Parser)
 local ImageSearch = require(_Patterns.ImageSearch)
@@ -270,6 +271,26 @@ local function runCommandSearch(query: string, token: number)
 	renderSuggestions(query, items)
 end
 
+-- player autocomplete for a command argument (e.g. /incog, /ignore) -- inserts a
+-- plain name (+ space), not an @mention
+local function runPlayerArgSearch(query: string, token: number)
+	local items = {}
+	local lower = query:lower()
+	for _, plr in Players:GetPlayers() do
+		if query == "" or plr.Name:lower():sub(1, #lower) == lower or plr.DisplayName:lower():sub(1, #lower) == lower then
+			table.insert(items, {
+				type = "user",
+				name = plr.DisplayName ~= plr.Name and (plr.DisplayName .. "  @" .. plr.Name) or plr.Name,
+				icon = "rbxthumb://type=AvatarHeadShot&id=" .. plr.UserId .. "&w=48&h=48",
+				source = "Players",
+				insertText = plr.Name .. " ",
+			})
+		end
+	end
+	if token ~= _searchToken then return end
+	renderSuggestions(query, items)
+end
+
 -- ─── reply targeting ─────────────────────────────────────────────────────────
 
 local function clearReply()
@@ -429,6 +450,24 @@ local function submit()
 				clear = Render.Clear,
 				system = Render.SystemMessage,
 				resolvePlayer = resolvePlayer,
+				ignore = function(name: string)
+					local uid = Social.ResolveUserId(name)
+					if uid then
+						Social.Ignore(uid)
+						Render.SystemMessage("Ignoring " .. name .. " — you won't see their messages.")
+					else
+						Render.SystemMessage("No player found matching '" .. name .. "'")
+					end
+				end,
+				unignore = function(name: string)
+					local uid = Social.ResolveUserId(name)
+					if uid then
+						Social.Unignore(uid)
+						Render.SystemMessage("No longer ignoring " .. name .. ".")
+					else
+						Render.SystemMessage("No player found matching '" .. name .. "'")
+					end
+				end,
 			},
 		})
 		if result.kind == "send" and result.payload then
@@ -483,6 +522,25 @@ local function onCursorMoved()
 	if cursor == -1 then return end
 
 	local preceding = text:sub(1, cursor - 1)
+
+	-- command-argument player autocomplete, e.g. "/incog Bo" -> players
+	local cmdName, argPartial = preceding:match("^/([%w_]+)%s+(%S*)$")
+	if cmdName then
+		local spec = Commands.Get(cmdName)
+		if spec and spec.player_arg then
+			_activeTrigger = "cmdarg"
+			_triggerStart = #preceding - #argPartial + 1
+			_searchToken += 1
+			local token = _searchToken
+			task.delay(AUTOCOMPLETE_DEBOUNCE, function()
+				if token ~= _searchToken then return end
+				if not _inputBox or not _inputBox:IsFocused() then return end
+				runPlayerArgSearch(argPartial, token)
+			end)
+			return
+		end
+	end
+
 	local matchStart, _e, trigger, query = preceding:find("([@:/])([%w_]*)$")
 
 	-- '/' only triggers commands at the very start of the field

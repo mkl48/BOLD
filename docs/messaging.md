@@ -1,5 +1,5 @@
 ---
-sidebar_position: 3
+sidebar_position: 4
 ---
 
 # Sending messages
@@ -47,7 +47,13 @@ Bold.Message({
 })
 ```
 
-Embed constructors: `Bold.Image`, `Bold.Gif`, `Bold.Sticker`, `Bold.RichText`, `Bold.Action`. Handle `Action` clicks via the `EmbedActionFired` event.
+Embed constructors: `Bold.Image`, `Bold.Gif`, `Bold.Sticker`, `Bold.RichText`, `Bold.Action`, `Bold.Buttons` (a row of buttons), and `Bold.Progress` (a 0–1 bar). Listen for any button (and poll option) with:
+
+```lua
+Bold.OnAction(function(action_id, message)
+    if action_id == "buy_skin" then ... end
+end)
+```
 
 ## Replies & reactions
 

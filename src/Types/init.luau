@@ -27,6 +27,7 @@ export type ElementType =
 	| "color"
 	| "link"
 	| "blockquote"
+	| "header"
 	| "panel"
 
 export type Element = {
@@ -40,6 +41,7 @@ export type Element = {
 		emoji_asset: string?,
 		link_url: string?,
 		color: Color3?,
+		level: number?, -- header level (1-3)
 		-- panel elements
 		panel_name: string?,
 		panel_args: { [string]: any }?,
@@ -90,7 +92,25 @@ export type ActionEmbed = BaseEmbed & {
 	style: ("primary" | "danger" | "ghost")?,
 }
 
-export type Embed = ImageEmbed | GifEmbed | StickerEmbed | RichTextEmbed | ActionEmbed
+export type ButtonSpec = {
+	text: string,
+	action_id: string,
+	style: ("primary" | "danger" | "ghost")?,
+}
+
+export type ButtonsEmbed = BaseEmbed & {
+	type: "Buttons",
+	title: string?,
+	buttons: { ButtonSpec },
+}
+
+export type ProgressEmbed = BaseEmbed & {
+	type: "Progress",
+	value: number, -- 0..1
+	label: string?,
+}
+
+export type Embed = ImageEmbed | GifEmbed | StickerEmbed | RichTextEmbed | ActionEmbed | ButtonsEmbed | ProgressEmbed
 
 -- ─── Message ─────────────────────────────────────────────────────────────────
 
@@ -312,8 +332,10 @@ export type ImageAsset = {
 export type CommandSpec = {
 	description: string?,
 	args: string?,
+	-- when true, the first argument autocompletes to players (e.g. /incog, /ignore)
+	player_arg: boolean?,
 	-- handler runs on the client; return a compose payload to send, or nil for a
-	-- purely local command. ctx exposes { text, args, raw, interface }.
+	-- purely local command. ctx exposes { args, rest, raw, localPlayer, actions }.
 	handler: (ctx: any) -> any?,
 	server: boolean?,
 }

@@ -145,6 +145,58 @@ local function registerBuiltinPanels(Interface)
 		body.Parent = frame
 		return frame
 	end)
+
+	Interface.RegisterPanel("poll", function(args, message)
+		local frame = Instance.new("Frame")
+		frame.AutomaticSize = Enum.AutomaticSize.Y
+		frame.Size = UDim2.new(1, 0, 0, 0)
+		frame.BackgroundColor3 = Skin.tk("reaction_bg")
+		frame.BackgroundTransparency = 0.3
+		frame.BorderSizePixel = 0
+		Skin.corner(frame, 8)
+		Skin.pad(frame, 10, 10, 8, 8)
+		Skin.list(frame, nil, 6)
+
+		local q = Instance.new("TextLabel")
+		q.AutomaticSize = Enum.AutomaticSize.Y
+		q.Size = UDim2.new(1, 0, 0, 0)
+		q.BackgroundTransparency = 1
+		q.Text = "📊 " .. tostring(args.question or "Poll")
+		q.Font = Skin.tk("font_bold")
+		q.TextSize = Skin.density().text_size
+		q.TextColor3 = Skin.tk("text")
+		q.TextXAlignment = Enum.TextXAlignment.Left
+		q.TextWrapped = true
+		q.LayoutOrder = 0
+		q.Parent = frame
+
+		for i, opt in string.split(tostring(args.options or ""), ",") do
+			local o = opt:gsub("^%s+", ""):gsub("%s+$", "")
+			if o ~= "" then
+				local b = Instance.new("TextButton")
+				b.AutomaticSize = Enum.AutomaticSize.Y
+				b.Size = UDim2.new(1, 0, 0, 30)
+				b.BackgroundColor3 = Skin.tk("accent")
+				b.BackgroundTransparency = 0.75
+				b.BorderSizePixel = 0
+				b.Text = o
+				b.Font = Skin.tk("font")
+				b.TextSize = Skin.density().text_size - 1
+				b.TextColor3 = Skin.tk("text")
+				b.TextXAlignment = Enum.TextXAlignment.Left
+				b.LayoutOrder = i
+				b.ZIndex = 3
+				b.Parent = frame
+				Skin.corner(b, 6)
+				Skin.pad(b, 10, 10, 0, 0)
+				b.MouseButton1Click:Connect(function()
+					b.BackgroundTransparency = 0.4
+					Events.EmbedActionFired:Fire("poll:" .. o, message)
+				end)
+			end
+		end
+		return frame
+	end)
 end
 
 --[=[
@@ -303,6 +355,26 @@ function Bold.Action(action_id: string, config: {
 	return e :: any
 end
 
+--[=[
+	@within Bold
+	Builds a row-of-buttons embed. Handle clicks with [Bold.OnAction].
+]=]
+function Bold.Buttons(buttons: { Types.ButtonSpec }, config: { title: string?, color: Color3? }?): Types.ButtonsEmbed
+	local e = config and table.clone(config) or {}
+	e.type = "Buttons"; e.buttons = buttons
+	return e :: any
+end
+
+--[=[
+	@within Bold
+	Builds a progress-bar embed. `value` is 0..1.
+]=]
+function Bold.Progress(value: number, config: { label: string?, color: Color3? }?): Types.ProgressEmbed
+	local e = config and table.clone(config) or {}
+	e.type = "Progress"; e.value = value
+	return e :: any
+end
+
 -- ─── Events / Hooks ──────────────────────────────────────────────────────────
 
 --[=[
@@ -343,6 +415,15 @@ end
 ]=]
 function Bold.OnMentioned(fn: (message: any) -> ()): RBXScriptConnection
 	return Events.Mentioned:Connect(fn)
+end
+
+--[=[
+	@within Bold
+	Fires when an Action/Buttons embed button (or a poll option) is clicked.
+	`action_id` is the id you gave the button; poll options fire `"poll:<option>"`.
+]=]
+function Bold.OnAction(fn: (action_id: string, message: any?) -> ()): RBXScriptConnection
+	return Events.EmbedActionFired:Connect(fn)
 end
 
 -- Server / client message guard: return false to drop.

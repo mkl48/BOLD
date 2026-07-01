@@ -124,6 +124,7 @@ Commands.Register("help", {
 Commands.Register("incog", {
 	description = "Privately message a player",
 	args = "<player> <message>",
+	player_arg = true,
 	handler = function(ctx)
 		local targetName = ctx.args[1]
 		if not targetName then
@@ -145,6 +146,57 @@ Commands.Register("incog", {
 		end
 
 		return { text = message, kind = "whisper", recipient = player }
+	end,
+})
+
+Commands.Register("poll", {
+	description = "Start a poll",
+	args = "<question> | <option> | <option> …",
+	handler = function(ctx)
+		local parts = string.split(ctx.rest, "|")
+		local function trim(s: string): string
+			return (s:gsub("^%s+", ""):gsub("%s+$", ""))
+		end
+		local question = parts[1] and trim(parts[1]) or ""
+		if question == "" then
+			ctx.actions.system("Usage: /poll Question | Option 1 | Option 2")
+			return nil
+		end
+		local options = {}
+		for i = 2, #parts do
+			local o = trim(parts[i])
+			if o ~= "" then table.insert(options, o) end
+		end
+		if #options < 2 then
+			ctx.actions.system("A poll needs at least two options.")
+			return nil
+		end
+		local fence = (':::poll question="%s" options="%s"\n:::'):format(question, table.concat(options, ","))
+		return { text = fence }
+	end,
+})
+
+Commands.Register("ignore", {
+	description = "Hide a player's messages for you",
+	args = "<player>",
+	player_arg = true,
+	handler = function(ctx)
+		local name = ctx.args[1]
+		if not name then ctx.actions.system("Usage: /ignore <player>"); return nil end
+		ctx.actions.ignore(name)
+		return nil
+	end,
+})
+
+Commands.Register("unignore", {
+	description = "Stop hiding a player's messages",
+	args = "<player>",
+	player_arg = true,
+	handler = function(ctx)
+		local name = ctx.args[1]
+		if not name then ctx.actions.system("Usage: /unignore <player>"); return nil end
+		ctx.actions.unignore(name)
+		return nil
 	end,
 })
 

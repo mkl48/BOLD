@@ -336,6 +336,14 @@ function Parser.Parse(raw: string?, opts: ParseOptions?): { Token }
 			continue
 		end
 
+		-- header: # / ## / ### text
+		local hashes, htext = line:match("^(#+)%s+(.*)$")
+		if hashes and #hashes <= 3 and htext ~= "" then
+			table.insert(tokens, { type = "header", content = htext, data = { level = #hashes } })
+			i += 1
+			continue
+		end
+
 		-- blockquote: > text
 		local quote = line:match("^>%s?(.*)$")
 		if quote ~= nil then
